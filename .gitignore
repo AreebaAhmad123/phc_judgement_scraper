@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Runtime state (kept out of git; sample_output/ has example JSON instead)
+data/judgments.json
+data/.scrape.lock
+logs/*.log*
+debug_responses/
+
+# Downloaded PDFs are typically large / not meant for git history.
+# Comment these two lines out if you specifically want to commit the PDFs
+# themselves (e.g. as part of the assignment submission).
+downloaded_pdfs/**/*.pdf
+downloaded_pdfs/
+downloaded_pdfs/**/*
