@@ -165,12 +165,14 @@ def pdf_to_markdown_path(record_id, pdf_relative_path, kind="judgment"):
                " (used OCR)" if used_ocr else "")
     return md_path
 
-def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str) -> str | None:
-    """Extract MD to markdown/<Court Name - leaf>.md. Returns absolute path."""
+def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str, stem_override: str | None = None) -> str | None:
+    """Extract MD to markdown/<Court Name - leaf>.md. Returns absolute path.
+    stem_override: same collision-safe stem used for this judgment's PDF
+    and JSON (see naming.safe_file_stem) so all three artifacts agree."""
     if not pdf_relative_path:
         return None
     pdf_abs = os.path.join(config.PROJECT_ROOT, pdf_relative_path)
-    md_abs = local_md_path(pdf_url)
+    md_abs = local_md_path(pdf_url, stem_override)
     os.makedirs(os.path.dirname(md_abs), exist_ok=True)
 
     if os.path.exists(md_abs) and os.path.getmtime(md_abs) >= os.path.getmtime(pdf_abs):

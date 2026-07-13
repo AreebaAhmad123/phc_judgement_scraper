@@ -29,6 +29,21 @@ class ProcessedState:
     def get(self, stable_id: str) -> dict[str, Any] | None:
         return self._data.get("judgments", {}).get(stable_id)
 
+    def owner_of_file_stem(self, file_stem: str, exclude_id: str | None = None) -> str | None:
+        """Returns the stable_id of the judgment already using this exact
+        file stem, or None if it's unclaimed (or only claimed by
+        exclude_id itself - i.e. this judgment re-using its own name on a
+        later run, which is not a collision). Used to detect two
+        DIFFERENT cases whose PDF URLs happen to share a basename before
+        either one's pdf/md/json files are written - see
+        naming.safe_file_stem and DECISIONS.md "Filename collisions"."""
+        for sid, entry in self._data.get("judgments", {}).items():
+            if sid == exclude_id:
+                continue
+            if entry.get("fileName") == file_stem:
+                return sid
+        return None
+
     def mark_complete(
         self,
         stable_id: str,

@@ -154,6 +154,20 @@ OCR_DPI = int(os.environ.get("OCR_DPI", 300))
 QUERY_CLASSIFIER_MODEL = os.environ.get("QUERY_CLASSIFIER_MODEL", "llama-3.1-8b-instant")
 RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+# --- Brief Section 4: LLM-based metadata field extraction ---
+# Same Groq account/key as llm.py and query_classifier.py - one provider,
+# one key to manage. A larger/smarter model than the query classifier's
+# 8B model, since this does real legal-document extraction (case
+# category, disposition, cited law, summaries) rather than a 3-way label.
+METADATA_LLM_MODEL = os.environ.get("METADATA_LLM_MODEL", "llama-3.3-70b-versatile")
+# Cap on how much of a judgment's markdown text is sent per extraction
+# call. Most PHC judgments are well under this; a handful of very long
+# ones would otherwise burn a disproportionate number of tokens for
+# marginal extra recall (the operative order and legal reasoning that
+# matter most for these fields are almost always in the first and last
+# portions of the document, which this cap keeps in full).
+METADATA_LLM_MAX_CHARS = int(os.environ.get("METADATA_LLM_MAX_CHARS", "20000"))
+
 # for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR):
 #     os.makedirs(_dir, exist_ok=True)
 

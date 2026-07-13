@@ -9,7 +9,7 @@ from .external_api import post_judgment, put_judgment
 from .http_client import ThrottledClient
 from .logging_setup import logger
 from .metadata_builder import build_metadata, patch_citation_fields
-from .naming import file_stem, local_json_path, s3_key
+from .naming import file_stem, local_json_path, s3_key, safe_file_stem
 from .pdf_downloader import download_pdf
 from .pdf_to_markdown import pdf_to_markdown_brief
 from .processed_state import ProcessedState
@@ -30,13 +30,13 @@ def _load_json(path: str) -> dict:
         return json.load(f)
 
 
-def _upload_triplet(pdf_url: str, pdf_rel: str, md_abs: str, json_path: str) -> None:
+def _upload_triplet(pdf_url: str, pdf_rel: str, md_abs: str, json_path: str, stem: str) -> None:
     s3_uploader.upload_file(
         os.path.join(config.PROJECT_ROOT, pdf_rel),
-        s3_key("pdfs", pdf_url),
+        s3_key("pdfs", pdf_url, stem),
     )
-    s3_uploader.upload_file(md_abs, s3_key("markdown", pdf_url))
-    s3_uploader.upload_file(json_path, s3_key("metadata", pdf_url))
+    s3_uploader.upload_file(md_abs, s3_key("markdown", pdf_url, stem))
+    s3_uploader.upload_file(json_path, s3_key("metadata", pdf_url, stem))
 
 
 def _process_new(row: dict, client, court, state: ProcessedState) -> bool:
@@ -46,31 +46,48 @@ def _process_new(row: dict, client, court, state: ProcessedState) -> bool:
         return False
 
     sid = stable_judgment_id(pdf_url, row.get("decision_date"), row.get("case_info", ""))
-    pdf_rel, _ = download_pdf(client, pdf_url, row["id"], store=None, kind="judgment")
+    # Computed once and threaded through every artifact below (pdf, md,
+    # json, S3 keys) so a real filename collision with a DIFFERENT
+    # judgment - two cases whose PDF URLs share a basename - can never
+    # split one judgment's files across two different stems, or worse,
+    # let two judgments silently overwrite each other's files. See
+    # naming.safe_file_stem and DECISIONS.md "Filename collisions".
+    stem = safe_file_stem(pdf_url, sid, state)
+
+    pdf_rel, _ = download_pdf(client, pdf_url, row["id"], store=None, kind="judgment",
+                              stem_override=stem)
     if not pdf_rel:
         return False
 
-    md_abs = pdf_to_markdown_brief(pdf_url, pdf_rel)
+    md_abs = pdf_to_markdown_brief(pdf_url, pdf_rel, stem_override=stem)
     if not md_abs:
         return False
 
     with open(md_abs, encoding="utf-8") as f:
         md_text = f.read()
 
-    metadata = build_metadata(court, row, md_text)
-    json_path = local_json_path(pdf_url)
+    metadata = build_metadata(court, row, md_text, stem_override=stem)
+    json_path = local_json_path(pdf_url, stem_override=stem)
     _write_json(json_path, metadata)
 
-    _upload_triplet(pdf_url, pdf_rel, md_abs, json_path)
+    _upload_triplet(pdf_url, pdf_rel, md_abs, json_path, stem)
     post_judgment(metadata)
 
-    state.mark_complete(sid, file_stem(pdf_url), listing_citation_value(row.get("neutral_citation")))
+    state.mark_complete(sid, stem, listing_citation_value(row.get("neutral_citation")))
     return True
 
 
 def _process_citation_update(row: dict, court, state: ProcessedState, sid: str) -> bool:
     pdf_url = row["judgment_pdf_url"]
-    json_path = local_json_path(pdf_url)
+    # Reuse the stem recorded when this judgment was first processed -
+    # NOT a freshly recomputed file_stem(pdf_url) - so a judgment that
+    # was originally disambiguated (real collision at insert time) keeps
+    # pointing at its actual file on disk instead of a plain stem that
+    # was never used for it.
+    entry = state.get(sid) or {}
+    stem = entry.get("fileName") or file_stem(pdf_url)
+
+    json_path = local_json_path(pdf_url, stem_override=stem)
     if not os.path.exists(json_path):
         logger.error("Citation update but missing local JSON: %s", json_path)
         return False
@@ -79,7 +96,7 @@ def _process_citation_update(row: dict, court, state: ProcessedState, sid: str) 
         _load_json(json_path), court, row.get("neutral_citation"), row.get("case_info", "")
     )
     _write_json(json_path, metadata)
-    s3_uploader.upload_file(json_path, s3_key("metadata", pdf_url), overwrite=True)
+    s3_uploader.upload_file(json_path, s3_key("metadata", pdf_url, stem), overwrite=True)
     put_judgment(metadata)
     state.update_citation(sid, listing_citation_value(row.get("neutral_citation")))
     return True
