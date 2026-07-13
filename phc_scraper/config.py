@@ -9,10 +9,17 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from urllib.parse import urlparse
+
+from .courts import get_court
+_court = get_court()
 # TARGET SITE
-BASE_URL = "https://www.peshawarhighcourt.gov.pk/PHCCMS/"
-SEARCH_PAGE_URL = BASE_URL + "reportedJudgments.php"
-SEARCH_ACTION_URL = BASE_URL + "reportedJudgments.php?action=search"
+# BASE_URL = "https://www.peshawarhighcourt.gov.pk/PHCCMS/"
+# SEARCH_PAGE_URL = BASE_URL + "reportedJudgments.php"
+# SEARCH_ACTION_URL = BASE_URL + "reportedJudgments.php?action=search"
+
+BASE_URL = _court.base_url
+SEARCH_PAGE_URL = _court.search_page_url
+SEARCH_ACTION_URL = _court.search_action_url
 
 # Years to crawl. The site's own dropdown lists 2010-2026 plus "All Years".
 # We crawl year-by-year rather than "All Years" so one bad year can't sink
@@ -46,7 +53,8 @@ BROWSER_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    "Origin": "https://www.peshawarhighcourt.gov.pk",
+    # "Origin": "https://www.peshawarhighcourt.gov.pk",
+    "Origin": _court.source_website,
     "Sec-Fetch-Site": "same-origin",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Dest": "document",
@@ -78,12 +86,20 @@ PDF_STREAM_BACKOFF_BASE = 3.0  # seconds; doubles each attempt
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-PDF_DIR = os.path.join(PROJECT_ROOT, "downloaded_pdfs")
+# PDF_DIR = os.path.join(PROJECT_ROOT, "downloaded_pdfs")
+
+PDF_DIR = os.path.join(PROJECT_ROOT, "pdfs")
 SC_PDF_DIR = os.path.join(PDF_DIR, "sc_judgments")
 LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 DEBUG_DIR = os.path.join(PROJECT_ROOT, "debug_responses")
 STATE_DB_PATH = os.path.join(DATA_DIR, "judgments.json")
+
+PROCESSED_STATE_PATH = os.path.join(DATA_DIR, "processed_ids.json")
+
 RUN_LOCK_PATH = os.path.join(DATA_DIR, ".scrape.lock")
+
+METADATA_DIR = os.path.join(PROJECT_ROOT, "metadata")
+
 
 #stage 2 
 
@@ -109,6 +125,21 @@ CHUNK_OVERLAP_WORDS = 60
 MARKDOWN_DIR = os.path.join(PROJECT_ROOT, "markdown")
 INGESTION_STATE_PATH = os.path.join(DATA_DIR, "ingestion_state.json")
 
+# --- AWS S3 ---
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+# --- External Judgment API ---
+EXTERNAL_JUDGMENT_API_BASE_URL = os.environ.get(
+    "EXTERNAL_JUDGMENT_API_BASE_URL", "https://chat.pakistanlawbot.com"
+)
+EXTERNAL_JUDGMENT_API_KEY = os.environ.get("EXTERNAL_JUDGMENT_API_KEY")
+# Brief quality gate
+MIN_CHARS_PER_PAGE = int(os.environ.get("MIN_CHARS_PER_PAGE", "300"))
+MIN_PDF_BYTES = int(os.environ.get("MIN_PDF_BYTES", "1024"))
+
+
 GOOGLE_OAUTH_CLIENT_SECRET_FILE = os.environ.get(
     "GOOGLE_OAUTH_CLIENT_SECRET_FILE", os.path.join(PROJECT_ROOT, "client_secret.json"))
 GOOGLE_OAUTH_TOKEN_FILE = os.environ.get(
@@ -120,9 +151,15 @@ OCR_ENABLED = os.environ.get("OCR_ENABLED", "true").lower() == "true"
 OCR_LANGUAGE = os.environ.get("OCR_LANGUAGE", "eng")
 OCR_DPI = int(os.environ.get("OCR_DPI", 300))
 
-for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR):
-    os.makedirs(_dir, exist_ok=True)
+QUERY_CLASSIFIER_MODEL = os.environ.get("QUERY_CLASSIFIER_MODEL", "llama-3.1-8b-instant")
+RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+# for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR):
+#     os.makedirs(_dir, exist_ok=True)
+
+
+for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR, METADATA_DIR):
+    os.makedirs(_dir, exist_ok=True)
 SCHEMA_VERSION = 2
 
 

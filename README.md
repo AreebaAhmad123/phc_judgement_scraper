@@ -165,3 +165,10 @@ python migrate_legacy_data.py /path/to/old/judgments.json
 ```bash
 python -m pytest tests/ -v
 ```
+
+## Brief-compliant pipeline (PDF + MD + JSON → S3 → API)
+
+```bash
+cp .env.example .env   # fill AWS + EXTERNAL_JUDGMENT_API_KEY
+python -m phc_scraper.cli
+python -m phc_scraper.cli --years 2025 2026

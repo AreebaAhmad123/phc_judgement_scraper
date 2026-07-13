@@ -40,6 +40,7 @@ from bs4 import BeautifulSoup
 
 from . import config
 
+from .courts import get_court
 
 from .logging_setup import logger
 
@@ -149,6 +150,7 @@ MIN_COLUMNS = 9
 
 
 def parse_results_table(html, year):
+    court = get_court()
     """Returns (rows, total_hint). A malformed row is skipped and logged,never crashes the whole parse."""
     soup = BeautifulSoup(html, "html.parser")
     table = soup.find("table", id="employee_list")
@@ -172,7 +174,8 @@ def parse_results_table(html, year):
             cells, COL_SC_STATUS, COL_DOWNLOAD)
 
         record = {
-            "id": f"PHC_{year}_{raw_sr_no}",
+            # "id": f"PHC_{year}_{raw_sr_no}",
+            "id": f"{court.id_prefix}_{year}_{raw_sr_no}",
             "serial_no": int(raw_sr_no),
             "year": year,
             "case_info": _clean_text(cells[COL_CASE_INFO]),

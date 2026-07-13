@@ -652,3 +652,140 @@ Please run this and share the output before I build a pagination fix -
 implementing one against an unconfirmed hypothesis risks solving the
 wrong problem, the same way the last few rounds of narrow, confirmed
 fixes actually worked.
+
+
+
+
+
+
+# CHANGES3.md — Stage 3 integration guide (reranking, hybrid search, query classification, eval)
+
+## Files in this zip
+
+```
+phc_scraper/reranker.py          <- NEW
+phc_scraper/retrieval.py          <- NEW (vector search, hybrid search, rerank orchestration)
+phc_scraper/query_classifier.py    <- NEW
+api/schemas.py                       <- REPLACES your Stage 2 version
+api/routes_chat.py                    <- REPLACES your Stage 2 version
+eval/                                   <- NEW package: harness, metrics, eval set template
+tests/test_query_classifier.py           <- NEW
+tests/test_eval_metrics.py                <- NEW
+requirements-stage3-append.txt             <- append to requirements.txt
+DECISIONS_STAGE3_ADDENDUM.md                <- append to DECISIONS.md, then FILL IN real numbers
+```
+
+**Note on provider consistency**: `query_classifier.py` uses **Groq**
+(`client.chat.completions.create`), the same provider and call shape as
+your existing `llm.py` — not Anthropic. This matters because of the real
+
+
+## 1. `phc_scraper/config.py` — add these constants
+
+```python
+QUERY_CLASSIFIER_MODEL = os.environ.get("QUERY_CLASSIFIER_MODEL", "llama-3.1-8b-instant")
+RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
+
+(`LLM_API_KEY`, `EMBEDDING_MODEL_NAME`, `WEAVIATE_COLLECTION` etc. should
+already be there from Stage 2 — nothing else to add. The classifier
+reuses `LLM_API_KEY`, no separate key needed.)
+
+## 2. `.env` / `.env.example` — add
+
+```
+QUERY_CLASSIFIER_MODEL=llama-3.1-8b-instant
+RERANKER_MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
+```
+
+Using a small/fast Groq model for classification (rather than the same
+model `LLM_MODEL` uses for generation) is deliberate — it's a gate that
+runs before every single chat request, so its cost and latency should
+stay small relative to the generation call it's protecting. Check
+Groq's model list if `llama-3.1-8b-instant` ever gets deprecated; any
+small/fast instruction model works fine here, classification into 3
+labels doesn't need a large model.
+
+## 3. `requirements.txt` — append
+
+Copy everything from `requirements-stage3-append.txt` onto the end.
+`sentence-transformers` and `groq` should already be present from Stage
+2; only `numpy` (used by `eval/metrics.py`) and `pytest` are genuinely
+new.
+
+## 4. Nothing else changes structurally
+
+`api/main.py` doesn't need touching — `routes_chat.py`'s router is
+already wired in from Stage 2, and its internal implementation is what
+changed, not its route path or router registration.
+
+## 5. On multi-court extensibility
+
+Nothing in this stage is Peshawar-specific in a way that blocks adding
+another court later: `retrieval.py`, `reranker.py`, and
+`query_classifier.py` all operate on whatever's in the Weaviate
+collection and don't hardcode court identity anywhere. The only
+genuinely court-specific things left are `config.WEAVIATE_COLLECTION`'s
+name (`PHCJudgmentChunk`) and `query_classifier.py`'s system prompt,
+which explicitly names "Peshawar High Court" as the domain boundary for
+what counts as "relevant" (see its docstring). Adding a second court
+later means either a second collection + a second classifier prompt, or
+generalizing both to accept a `court` parameter — a small, contained
+change when it's actually needed, not a blocker today.
+
+## 6. Run the tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+`test_query_classifier.py` mocks the Groq call (no API key/network
+needed). `test_eval_metrics.py` is pure logic, no external dependencies.
+Both were run and verified passing during development of this patch —
+`reranker.py`/`retrieval.py`/full end-to-end chat flow still need a real
+Weaviate instance + API keys to exercise, which is what the eval harness
+is for (next section).
+
+## 7. Fill in the real eval set and get real numbers
+
+```bash
+# 1. Edit eval/eval_set.json - replace every placeholder entry with a
+#    real question against a judgment you've actually ingested.
+#    See eval/README.md for exactly what makes a good entry.
+
+# 2. Run every configuration:
+python -m eval.run_eval --config all
+
+# 3. Generate the comparison table:
+python -m eval.report
+
+# 4. Get a concrete reranking example for the PR:
+python -m eval.demo_rerank_example "a real question about your data"
+```
+
+Paste `eval/report.py`'s output table and `demo_rerank_example.py`'s
+output into `DECISIONS_STAGE3_ADDENDUM.md`'s placeholders (already
+appended to `DECISIONS.md` per step above), and write the interpretation
+paragraphs honestly based on what the numbers actually show — including
+if something didn't help. That combination (real numbers + honest
+interpretation) is what the rubric's "Evaluation" and "Honest Reporting"
+line items are actually checking for, not just having the harness exist.
+
+## 8. New request fields for `/chat` (all optional, sensible defaults)
+
+```json
+{
+  "question": "...",
+  "top_k": 5,
+  "candidate_pool_size": 20,
+  "use_hybrid": true,
+  "hybrid_alpha": 0.5,
+  "use_rerank": true,
+  "skip_classification": false,
+  "chunk_type": null
+}
+```
+
+These are what let `eval/run_eval.py` (and you, manually via `/docs`)
+toggle each Stage 3 change independently without redeploying anything —
+same endpoint, same code path, different flags.

@@ -28,7 +28,7 @@ skipped) rather than crashing the run - text-layer PDFs are unaffected
 either way.
 """
 import os
-
+import re
 from . import config
 from .logging_setup import logger
 
@@ -39,7 +39,31 @@ except ImportError:
     _HAVE_PYMUPDF4LLM = False
 
 import fitz  # PyMuPDF
+from .naming import local_md_path
 
+_PLACEHOLDER_ONLY = re.compile(r"^(\[picture omitted\]|[-–—\s])+$", re.IGNORECASE)
+
+
+def _page_count(pdf_abs: str) -> int:
+    doc = fitz.open(pdf_abs, filetype="pdf")
+    try:
+        return doc.page_count
+    finally:
+        doc.close()
+
+
+def _chars_per_page(text: str, page_count: int) -> float:
+    if page_count <= 0:
+        return 0.0
+    return len(text.strip()) / page_count
+
+
+def _is_acceptable_markdown(text: str, page_count: int) -> bool:
+    if not text or not text.strip():
+        return False
+    if _PLACEHOLDER_ONLY.match(text.strip()):
+        return False
+    return _chars_per_page(text, page_count) >= config.MIN_CHARS_PER_PAGE
 
 def _page_text_with_ocr_fallback(page, page_num, pdf_path):
     """Returns (text, was_ocr). Tries the real text layer first; only
@@ -140,3 +164,39 @@ def pdf_to_markdown_path(record_id, pdf_relative_path, kind="judgment"):
                os.path.relpath(md_path, config.PROJECT_ROOT),
                " (used OCR)" if used_ocr else "")
     return md_path
+
+def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str) -> str | None:
+    """Extract MD to markdown/<Court Name - leaf>.md. Returns absolute path."""
+    if not pdf_relative_path:
+        return None
+    pdf_abs = os.path.join(config.PROJECT_ROOT, pdf_relative_path)
+    md_abs = local_md_path(pdf_url)
+    os.makedirs(os.path.dirname(md_abs), exist_ok=True)
+
+    if os.path.exists(md_abs) and os.path.getmtime(md_abs) >= os.path.getmtime(pdf_abs):
+        return md_abs
+
+    page_count = _page_count(pdf_abs)
+    text = None
+    used_ocr = False
+
+    if _HAVE_PYMUPDF4LLM:
+        try:
+            text = pymupdf4llm.to_markdown(pdf_abs)
+        except Exception as exc:
+            logger.warning("pymupdf4llm failed on %s (%s)", pdf_abs, exc)
+
+    if not _is_acceptable_markdown(text or "", page_count):
+        text, used_ocr = _extract_text_per_page(pdf_abs)
+
+    if not _is_acceptable_markdown(text or "", page_count):
+        logger.warning(
+            "Markdown rejected for %s (< %d chars/page or empty)",
+            pdf_abs, config.MIN_CHARS_PER_PAGE,
+        )
+        return None
+
+    with open(md_abs, "w", encoding="utf-8") as f:
+        f.write(text)
+    logger.info("Wrote markdown %s%s", md_abs, " (OCR)" if used_ocr else "")
+    return md_abs

@@ -13,7 +13,8 @@ import argparse
 import sys
 
 from .logging_setup import configure_logging
-from .scraper import run_full_scrape
+# from .scraper import run_full_scrape
+from .pipeline import run_pipeline
 
 
 def main():
@@ -27,8 +28,12 @@ def main():
 
     #calling function to configure logging settings for the script. 
     configure_logging()
+    # Optional: add --legacy-scrape flag to keep old behavior during migration.
+
     try:
-        run_full_scrape(years=args.years)
+        # run_full_scrape(years=args.years)
+
+        run_pipeline(years=args.years)
     except RuntimeError as exc:
         print(f"Aborted: {exc}", file=sys.stderr)
         sys.exit(1)

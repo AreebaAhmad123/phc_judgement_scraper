@@ -376,3 +376,109 @@ hypothetical edge cases:
   "we checked, and it wasn't actually broken" - is worth writing down
   with the same care as a fix, not silently dropped once it stopped
   being alarming.
+
+
+
+
+
+---
+
+## Stage 3: reranking, hybrid search, query classification, evaluation
+
+**Read this first**: the numbers in this section are placeholders —
+fill them in from your own `eval/report.py` output after replacing
+`eval/eval_set.json`'s placeholder entries with real questions against
+your ingested judgments. Don't publish this section with fabricated
+numbers; an honest "here's what I measured" beats a plausible-looking
+table nobody can reproduce.
+
+### What was tried
+
+**Reranking**: a cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`)
+re-scores a candidate pool of 20 vector/hybrid hits down to the top 5,
+scoring (query, chunk) jointly rather than comparing independent
+embeddings. See `eval/demo_rerank_example.py`'s output below for a
+concrete before/after example on a real question.
+
+```
+[paste the output of `python -m eval.demo_rerank_example "<a real question>"` here]
+```
+
+Measured effect (baseline vs rerank, from `eval/report.py`):
+
+| Metric | baseline | rerank | delta |
+|---|---|---|---|
+| Recall@k | [fill in] | [fill in] | [fill in] |
+| MRR | [fill in] | [fill in] | [fill in] |
+| Citation precision | [fill in] | [fill in] | [fill in] |
+| Latency (s) | [fill in] | [fill in] | [fill in] |
+
+**Interpretation**: [write 2-3 sentences here once you have real
+numbers — e.g. did MRR improve because the reranker pulled the right
+chunk from rank 3-4 up to rank 1? Did latency cost noticeably more per
+query, and was that worth it given the recall/MRR change?]
+
+**Hybrid search**: Weaviate's built-in hybrid query (BM25 + vector,
+server-side fusion via `alpha`) rather than a separate BM25 index kept in
+sync with ingestion — see `phc_scraper/retrieval.py`'s docstring for the
+full reasoning. Expected to help most on exact-token queries (citations,
+case numbers, judge names) and to help little or not at all on
+conceptual/paraphrased queries.
+
+Measured effect (baseline vs hybrid):
+
+| Metric | baseline | hybrid | delta |
+|---|---|---|---|
+| Recall@k | [fill in] | [fill in] | [fill in] |
+| MRR | [fill in] | [fill in] | [fill in] |
+
+**Interpretation**: [once you have real numbers, break this down by the
+two query kinds in your eval set — exact-token vs conceptual — since the
+aggregate number alone can hide a real effect that only shows up on one
+subset. If hybrid didn't help on your eval set overall, say why you
+think that is instead of tuning `hybrid_alpha` until it does.]
+
+**Query classification**: three-way classifier (relevant / irrelevant /
+meta) — see `phc_scraper/query_classifier.py`'s docstring for the full
+definition of "irrelevant" used here and its documented failure modes
+(jurisdiction-boundary questions, legal-vocabulary-but-off-corpus
+questions).
+
+Measured: `classification_accuracy` from the `full` config's
+`eval/results/full.json` = **[fill in]**, out of [N] labeled entries.
+
+**Interpretation**: [once measured — which category did it get wrong,
+if any? Does that match the failure modes already anticipated in the
+docstring, or something new?]
+
+### What didn't help (if applicable)
+
+[Be specific here once you've actually run the eval. Possibilities to
+watch for, not things to force: hybrid search showing no improvement or
+a slight regression on conceptual queries; reranking's latency cost
+outweighing a small recall/MRR gain for this corpus's size; the
+classifier misfiring on a specific phrasing pattern in your eval set. If
+nothing regressed, say that plainly too — a clean set of improvements is
+also a valid, reportable result, as long as the numbers back it up.]
+
+### Why these particular technology choices (and what was rejected)
+
+- Weaviate's native hybrid search over a separate BM25 index (rank_bm25,
+  Elasticsearch): avoids a second index that has to be kept in sync with
+  incremental ingestion (see `ingest.py`'s incremental state tracking) —
+  Weaviate already indexes the `text` property for keyword search as a
+  byproduct of storing it.
+- A cross-encoder over a second embedding-similarity reranking pass: a
+  cross-encoder scores the (query, chunk) pair jointly through one
+  transformer forward pass, which is structurally more accurate at
+  relevance judgment than comparing two independently-computed vectors —
+  the standard reason cross-encoders outperform bi-encoders at reranking,
+  at the cost of not being usable over the whole corpus (hence: rerank a
+  small candidate pool, not everything).
+- An LLM-based query classifier over an embedding-centroid similarity
+  classifier: an embedding-similarity threshold is cheaper and needs no
+  extra API call, but is more easily fooled by a well-phrased off-domain
+  question that happens to embed near the corpus's legal vocabulary
+  (discussed in the classifier's docstring) — the LLM call is a small,
+  bounded cost per question and was judged worth it for a more defensible
+  "irrelevant" boundary.
