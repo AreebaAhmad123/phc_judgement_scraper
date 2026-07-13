@@ -10,6 +10,9 @@ this is generation only (one call per chat question), not the
 high-volume embedding step, so provider cost matters far less here than
 it would for embeddings (see embeddings.py for why that one stays local).
 """
+import re
+import time
+
 from groq import Groq
 
 from . import config
@@ -56,7 +59,23 @@ def generate_grounded_answer(question, chunks):
     # messages list (system + user roles), NOT Anthropic's
     # messages.create(system=..., messages=[...]) shape - different
     # request AND response structure.
-    response = client.chat.completions.create(
+    def _sleep_and_retry(callable_fn, *args, **kwargs):
+        while True:
+            try:
+                return callable_fn(*args, **kwargs)
+            except Exception as exc:
+                message = str(exc)
+                match = re.search(r"try again in ([0-9]+(?:\.[0-9]+)?)m([0-9]+(?:\.[0-9]+)?)s", message)
+                if not match:
+                    raise
+
+                minutes = float(match.group(1))
+                seconds = float(match.group(2))
+                wait_seconds = int(minutes * 60 + seconds)
+                time.sleep(wait_seconds)
+
+    response = _sleep_and_retry(
+        client.chat.completions.create,
         model=config.LLM_MODEL,
         max_tokens=1000,
         messages=[
