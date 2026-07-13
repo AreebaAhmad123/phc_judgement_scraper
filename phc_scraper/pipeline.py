@@ -5,7 +5,7 @@ import os
 from . import config
 from .citation_parser import listing_citation_value
 from .courts import get_court
-from .external_api import post_judgment, put_judgment
+from .external_api import ExternalAPIAuthError, post_judgment, put_judgment
 from .http_client import ThrottledClient
 from .logging_setup import logger
 from .metadata_builder import build_metadata, patch_citation_fields
@@ -137,6 +137,8 @@ def run_pipeline(years=None) -> None:
 
     client = ThrottledClient()
     stats = {"new": 0, "citation_update": 0, "skip": 0, "failed": 0}
+    failed_years: list[int] = []
+    auth_error: ExternalAPIAuthError | None = None
 
     try:
         with RunLock():
@@ -144,6 +146,7 @@ def run_pipeline(years=None) -> None:
             for year in years:
                 html = fetch_year_html(client, year)
                 if html is None:
+                    failed_years.append(year)
                     continue
                 rows, _ = parse_results_table(html, year)
                 for row in rows:
@@ -162,10 +165,25 @@ def run_pipeline(years=None) -> None:
                             )
                             ok = _process_citation_update(row, court, state, sid)
                             stats["citation_update" if ok else "failed"] += 1
+                    except ExternalAPIAuthError as exc:
+                        # Unrecoverable for the whole run (see
+                        # external_api.py docstring): a bad/missing API
+                        # key will 401 on every remaining row too, so
+                        # continuing would just burn the rest of the run
+                        # re-downloading/re-converting PDFs for nothing.
+                        # Stop the year loop now; state for everything
+                        # processed so far is still saved in `finally`.
+                        logger.error(
+                            "Halting run: external API authentication failed (%s)", exc,
+                        )
+                        auth_error = exc
+                        break
                     except Exception:
                         logger.exception("Failed row %s", row.get("id"))
                         stats["failed"] += 1
                 state.save()
+                if auth_error is not None:
+                    break
     finally:
         client.close()
         state.save()
@@ -174,4 +192,16 @@ def run_pipeline(years=None) -> None:
         except Exception:
             logger.exception("Failed to upload processed_ids.json to S3")
 
-    logger.info("Pipeline done: %s", stats)
+    if failed_years:
+        logger.warning(
+            "Pipeline: %d year(s) failed to fetch and were skipped: %s",
+            len(failed_years), failed_years,
+        )
+
+    logger.info("Pipeline done: %s (failed_years=%s)", stats, failed_years)
+
+    if auth_error is not None:
+        # Propagate after cleanup (state saved, S3 sync attempted) so the
+        # process exits non-zero and the scheduler/CI surfaces this loudly
+        # instead of it looking like an ordinary day with some failed rows.
+        raise auth_error

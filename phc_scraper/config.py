@@ -35,10 +35,15 @@ RESULTS_PER_PAGE = 25  # DataTables pageLength the site's own JS uses
 # browser-like header set to get past a WAF/session guard, flip this - but
 # throttling and robots.txt compliance below apply either way; only the
 # identification string changes.
-IDENTIFY_AS_BROWSER = True
+IDENTIFY_AS_BROWSER = os.environ.get("IDENTIFY_AS_BROWSER", "false").lower() == "true"
 
-CONTACT_EMAIL = "REPLACE_WITH_YOUR_EMAIL@example.com"
-REPO_URL = "https://github.com/REPLACE_WITH_YOUR_ORG/phc-judgments-scraper"
+# TODO: replace with the real contact address before running this
+# against the live site - this placeholder must not ship in the honest
+# User-Agent string (see IDENTIFY_AS_BROWSER above).
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "REPLACE_WITH_YOUR_EMAIL@example.com")
+REPO_URL = os.environ.get(
+    "REPO_URL", "https://github.com/AreebaAhmad123/phc_judgement_scraper"
+)
 
 BOT_USER_AGENT = (
     f"PHCJudgmentsResearchBot/1.0 (+{REPO_URL}; contact: {CONTACT_EMAIL})"

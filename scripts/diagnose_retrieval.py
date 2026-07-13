@@ -1,5 +1,5 @@
 """Run this from the phc-scraper project root (same venv as everything else):
-    python diagnose_retrieval.py
+    python scripts/diagnose_retrieval.py
 It isolates WHICH of the three likely causes is behind the empty chat response.
 """
 from phc_scraper.weaviate_client import get_client

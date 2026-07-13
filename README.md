@@ -169,6 +169,24 @@ python -m pytest tests/ -v
 ## Brief-compliant pipeline (PDF + MD + JSON → S3 → API)
 
 ```bash
-cp .env.example .env   # fill AWS + EXTERNAL_JUDGMENT_API_KEY
+cp .env.example .env   # fill AWS + EXTERNAL_JUDGMENT_API_KEY + CONTACT_EMAIL
 python -m phc_scraper.cli
 python -m phc_scraper.cli --years 2025 2026
+```
+
+A bad/missing `EXTERNAL_JUDGMENT_API_KEY` (401 from the external API)
+halts the whole run immediately rather than failing row-by-row — the
+CLI prints `Aborted: ...` and exits non-zero. See `DECISIONS.md` and
+`phc_scraper/external_api.py` for the full error-handling contract.
+
+## Submission deliverables
+
+`pdfs/`, `markdown/`, and `metadata/` at the repo root are gitignored
+(bulk generated content), except for a small real sample kept for
+submission. After a real run against the live site:
+
+```bash
+git add -f pdfs/<5 real files> markdown/<5 real files> metadata/<5 real files>
+```
+
+See `SUBMISSION_NOTES.md` for the 1-page summary of design decisions.

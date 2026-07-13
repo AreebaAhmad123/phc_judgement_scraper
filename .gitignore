@@ -8,13 +8,18 @@ venv/
 data/judgments.json
 data/ingestion_state.json
 data/gdrive_upload_state.json
+data/processed_ids.json
 data/.scrape.lock
 logs/*.log*
 debug_responses/
 
-# Large generated content, not meant for git history
-downloaded_pdfs/
+# Large generated content, not meant for git history. The submission's
+# 5-real-file sample in each of pdfs/, markdown/, metadata/ is committed
+# with `git add -f` specifically to bypass this - see README.md
+# "Submission deliverables".
+pdfs/
 markdown/
+metadata/
 
 # Secrets - never commit any of these
 .env
