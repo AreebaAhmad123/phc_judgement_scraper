@@ -1,12 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from phc_scraper import config
 from phc_scraper.llm import generate_grounded_answer
 from phc_scraper.query_classifier import classify_query
 from phc_scraper.retrieval import RetrievalConfig, retrieve
 
+from .auth import require_api_key
+from .limiter import limiter
 from .schemas import ChatRequest, ChatResponse, SourceRef
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+router = APIRouter(prefix="/chat", tags=["chat"], dependencies=[Depends(require_api_key)])
 
 _META_RESPONSE = (
     "I'm a research assistant over the Peshawar High Court reported "
@@ -17,14 +20,21 @@ _META_RESPONSE = (
 
 
 @router.post("", response_model=ChatResponse)
-def chat(request: ChatRequest):
+@limiter.limit(config.CHAT_RATE_LIMIT)
+def chat(request: Request, body: ChatRequest):
     """Classify -> retrieve (hybrid or pure-vector, optionally reranked)
     -> generate a grounded answer with citations. Every stage is
     independently toggleable via the request body so the eval harness
     (eval/run_eval.py) can measure each change's effect in isolation
-    without needing separate deployed endpoints."""
-    if not request.skip_classification:
-        classification = classify_query(request.question)
+    without needing separate deployed endpoints.
+
+    Requires a valid X-API-Key header (see api/auth.py) and is rate
+    limited per client IP (config.CHAT_RATE_LIMIT) - this endpoint
+    triggers billed/quota-limited Groq and embedding calls per request,
+    so it can't be left open to unauthenticated or unbounded traffic.
+    """
+    if not body.skip_classification:
+        classification = classify_query(body.question)
         if classification["label"] == "irrelevant":
             return ChatResponse(
                 answer="That question doesn't appear to be about Peshawar "
@@ -42,13 +52,13 @@ def chat(request: ChatRequest):
         classification = {"label": "relevant", "reasoning": "classification skipped"}
 
     retrieval_config = RetrievalConfig(
-        use_hybrid=request.use_hybrid, hybrid_alpha=request.hybrid_alpha,
-        use_rerank=request.use_rerank, candidate_pool_size=request.candidate_pool_size,
-        top_k=request.top_k, chunk_type_filter=request.chunk_type,
+        use_hybrid=body.use_hybrid, hybrid_alpha=body.hybrid_alpha,
+        use_rerank=body.use_rerank, candidate_pool_size=body.candidate_pool_size,
+        top_k=body.top_k, chunk_type_filter=body.chunk_type,
     )
 
     try:
-        chunks = retrieve(request.question, retrieval_config)
+        chunks = retrieve(body.question, retrieval_config)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=f"Retrieval failed: {exc}")
 
@@ -72,6 +82,6 @@ def chat(request: ChatRequest):
             snippet=(text[:280] + "...") if len(text) > 280 else text,
         ))
 
-    answer = generate_grounded_answer(request.question, chunks)
+    answer = generate_grounded_answer(body.question, chunks)
     return ChatResponse(answer=answer, sources=sources, query_label=classification["label"],
                         query_label_reasoning=classification["reasoning"])

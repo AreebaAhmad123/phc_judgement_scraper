@@ -13,6 +13,14 @@ Usage:
     python -m eval.run_eval --config full
     python -m eval.run_eval --config all          # runs every named config in sequence
 
+    --retrieval-only: skips classify_query and generate_grounded_answer
+    entirely (the only two calls that hit the LLM API), computing just
+    recall_at_k/mrr from retrieval. Use this when LLM_API_KEY's quota
+    is exhausted but you still want real before/after numbers for
+    reranking and hybrid search specifically - writes to
+    '<config>_retrieval_only.json', never overwriting a full run's file.
+        python -m eval.run_eval --config all --retrieval-only
+
 Named configs (each isolates one change so you can read a clean
 before/after for that specific change - see DECISIONS_STAGE3_ADDENDUM.md
 for how to interpret the deltas):
@@ -67,13 +75,25 @@ def _extract_cited_record_ids(answer_text, sources):
     return [sources[n - 1]["record_id"] for n in cited_numbers if 1 <= n <= len(sources)]
 
 
-def run_one(entry, config_flags, top_k=5, candidate_pool=20):
+def run_one(entry, config_flags, top_k=5, candidate_pool=20, retrieval_only=False):
+    """retrieval_only=True skips both Groq-dependent calls
+    (classify_query, generate_grounded_answer) entirely, so this can run
+    with zero LLM API usage - useful when the LLM_API_KEY's rate/usage
+    limit is exhausted but you still want a real before/after read on
+    what reranking and hybrid search do to retrieval quality specifically
+    (recall_at_k, mrr - both computed purely from retrieved_record_ids
+    vs expected_record_ids, no generation involved). citation_precision
+    and semantic_answer_similarity depend on a generated answer and are
+    left as None in this mode; classification is always skipped and
+    classification_accuracy is left out of the summary entirely, since
+    it isn't a retrieval-quality metric in the first place.
+    """
     question = entry["question"]
     start = time.monotonic()
 
     label = "relevant"
     reasoning = "classification skipped"
-    if not config_flags["skip_classification"]:
+    if not retrieval_only and not config_flags["skip_classification"]:
         classification = classify_query(question)
         label, reasoning = classification["label"], classification["reasoning"]
 
@@ -95,21 +115,31 @@ def run_one(entry, config_flags, top_k=5, candidate_pool=20):
     retrieved_ids = [c["record_id"] for c in chunks]
     expected_ids = entry.get("expected_record_ids") or []
 
+    result.update({
+        "retrieved_record_ids": retrieved_ids,
+        "recall_at_k": recall_at_k(retrieved_ids, expected_ids, top_k),
+        "mrr": mean_reciprocal_rank(retrieved_ids, expected_ids),
+        "latency_seconds": round(time.monotonic() - start, 3),
+    })
+
+    if retrieval_only:
+        result.update({
+            "cited_record_ids": None, "generated_answer": None,
+            "citation_precision": None, "semantic_answer_similarity": None,
+        })
+        return result
+
     answer = generate_grounded_answer(question, chunks) if chunks else \
         "No ingested source material matched this question."
     sources = [{"record_id": c["record_id"]} for c in chunks]
     cited_ids = _extract_cited_record_ids(answer, sources)
 
     result.update({
-        "retrieved_record_ids": retrieved_ids,
         "cited_record_ids": cited_ids,
         "generated_answer": answer,
-        "recall_at_k": recall_at_k(retrieved_ids, expected_ids, top_k),
-        "mrr": mean_reciprocal_rank(retrieved_ids, expected_ids),
         "citation_precision": citation_precision(cited_ids, expected_ids),
         "semantic_answer_similarity": semantic_answer_similarity(
             answer, entry.get("reference_answer")) if entry.get("reference_answer") else None,
-        "latency_seconds": round(time.monotonic() - start, 3),
     })
     return result
 
@@ -119,30 +149,38 @@ def _mean(values):
     return round(sum(clean) / len(clean), 4) if clean else None
 
 
-def run_config(config_name, eval_entries):
+def run_config(config_name, eval_entries, retrieval_only=False):
     config_flags = CONFIGS[config_name]
-    per_entry = [run_one(entry, config_flags) for entry in eval_entries]
+    per_entry = [run_one(entry, config_flags, retrieval_only=retrieval_only) for entry in eval_entries]
 
     labeled_entries = [r for r in per_entry if r["label_correct"] is not None]
+    classification_ran = not retrieval_only and not config_flags["skip_classification"]
     summary = {
         "config_name": config_name, "config_flags": config_flags,
+        "retrieval_only": retrieval_only,
         "n_entries": len(per_entry),
         "mean_recall_at_k": _mean([r.get("recall_at_k") for r in per_entry]),
         "mean_mrr": _mean([r.get("mrr") for r in per_entry]),
         "mean_citation_precision": _mean([r.get("citation_precision") for r in per_entry]),
         "mean_semantic_answer_similarity": _mean([r.get("semantic_answer_similarity") for r in per_entry]),
+        # Only meaningful when classification actually ran (the "full"
+        # config) - for every other config, label is hardcoded to
+        # "relevant" (see run_one), so comparing it against entry
+        # categories would just report the eval set's base rate of
+        # "relevant" entries, not classifier performance.
         "classification_accuracy": (
             round(sum(1 for r in labeled_entries if r["label_correct"]) / len(labeled_entries), 4)
-            if labeled_entries else None),
+            if labeled_entries and classification_ran else None),
         "mean_latency_seconds": _mean([r.get("latency_seconds") for r in per_entry]),
     }
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    out_path = os.path.join(RESULTS_DIR, f"{config_name}.json")
+    suffix = "_retrieval_only" if retrieval_only else ""
+    out_path = os.path.join(RESULTS_DIR, f"{config_name}{suffix}.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump({"summary": summary, "per_entry": per_entry}, f, indent=2, ensure_ascii=False)
 
-    print(f"\n=== {config_name} ===")
+    print(f"\n=== {config_name}{' (retrieval-only, no LLM calls)' if retrieval_only else ''} ===")
     for k, v in summary.items():
         if k not in ("config_name", "config_flags"):
             print(f"  {k}: {v}")
@@ -153,6 +191,17 @@ def run_config(config_name, eval_entries):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", choices=list(CONFIGS) + ["all"], default="all")
+    parser.add_argument(
+        "--retrieval-only", action="store_true",
+        help="Skip both Groq-dependent calls (query classification, answer "
+            "generation) entirely and only compute recall_at_k/mrr from "
+            "retrieval. Use this when LLM_API_KEY's rate/usage limit is "
+            "exhausted but you still want real numbers for what reranking "
+            "and hybrid search do to retrieval quality. Results are written "
+            "to '<config>_retrieval_only.json' - it never overwrites a full "
+            "run's results file, so re-run with generation once your quota "
+            "resets without losing this data.",
+    )
     args = parser.parse_args()
 
     with open(EVAL_SET_PATH, "r", encoding="utf-8") as f:
@@ -166,9 +215,9 @@ def main():
 
     if args.config == "all":
         for name in CONFIGS:
-            run_config(name, eval_entries)
+            run_config(name, eval_entries, retrieval_only=args.retrieval_only)
     else:
-        run_config(args.config, eval_entries)
+        run_config(args.config, eval_entries, retrieval_only=args.retrieval_only)
 
 
 if __name__ == "__main__":

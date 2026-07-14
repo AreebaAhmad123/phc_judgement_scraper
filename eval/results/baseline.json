@@ -11,8 +11,9 @@
     "mean_mrr": 0.4189,
     "mean_citation_precision": 0.3512,
     "mean_semantic_answer_similarity": 0.5956,
-    "classification_accuracy": 0.75,
-    "mean_latency_seconds": 9.7656
+    "classification_accuracy": null,
+    "mean_latency_seconds": 9.7656,
+    "retrieval_only": false
   },
   "per_entry": [
     {

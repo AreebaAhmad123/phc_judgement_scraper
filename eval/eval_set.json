@@ -1,12 +1,13 @@
 {
-  "_README": "REPLACE EVERY ENTRY BELOW with real question/answer pairs written against judgments you have actually ingested. These 3 entries are structural placeholders only (fake record IDs, fake answers) so run_eval.py has something to execute end-to-end before you fill in real data. See eval/README.md for exactly how to pick good questions. Include a MIX of query types across your 10-20 entries: at least 2-3 that should classify as 'irrelevant', 1-2 that should classify as 'meta', and among the 'relevant' ones, include some with exact-token content (citations, case numbers, judge names) where hybrid search is expected to help, and some conceptual/paraphrased ones where pure vector search is expected to do fine on its own - see DECISIONS_STAGE3_ADDENDUM.md for why that split matters for what you're trying to measure.",
   "entries": [
     {
       "id": "rel-01",
       "category": "relevant",
       "question": "What did the PHC decide in 2011 PTD 862 regarding the ANF staff's role?",
       "reference_answer": "The court held that the recovery was formally effected by Customs officials, not the ANF, as the ANF only referred the petitioner to the Customs counter, making the recovery lawful under the Customs Act.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: targets specific case citation."
     },
     {
@@ -14,7 +15,9 @@
       "category": "relevant",
       "question": "Can Customs Appellate Tribunals allow additional grounds during an appeal?",
       "reference_answer": "Yes, there is no legal bar against a Tribunal allowing additional grounds, provided the discretion is exercised judicially and the opposing party is given a full opportunity for rebuttal.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: tests understanding of procedural discretion."
     },
     {
@@ -22,7 +25,9 @@
       "category": "relevant",
       "question": "Does a criminal acquittal by a Special Judge affect Customs Act confiscation proceedings?",
       "reference_answer": "No, findings by a Special Judge in criminal proceedings are independent and do not affect the adjudication process or findings made under the Customs Act, 1969.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: tests legal independence of proceedings."
     },
     {
@@ -30,7 +35,9 @@
       "category": "relevant",
       "question": "Who were the judges in the Minhajuddin versus Collector of Customs case?",
       "reference_answer": "The case was heard before Justice Mazhar Alam Khan Miankhel and Justice Syed Sajjad Hassan Shah.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: tests citation of judge names."
     },
     {
@@ -38,7 +45,9 @@
       "category": "relevant",
       "question": "What happens if a Customs official wants to delegate functions to other officers?",
       "reference_answer": "Functions of Customs officers can be entrusted to other officers of the Federal or Provincial Government by the Board through a notification in the official Gazette under Section 6 of the Customs Act.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: tests statutory interpretation."
     },
     {
@@ -46,7 +55,9 @@
       "category": "relevant",
       "question": "In what case was the petitioner caught with foreign currency at Peshawar Airport on 15-8-2006?",
       "reference_answer": "The petitioner, Minhajuddin, was intercepted on 15-8-2006 at the Peshawar Airport while attempting to smuggle a huge amount of foreign currency.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: tests factual extraction."
     },
     {
@@ -54,7 +65,9 @@
       "category": "relevant",
       "question": "What is the legal standing of the Customs Act regarding assistance from Police or Civil Armed Forces?",
       "reference_answer": "Under Section 7 of the Customs Act, 1969, officers of Police, Central Excise, and Civil Armed Forces are empowered and required to assist Customs officers in the discharge of their functions.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: tests knowledge of Section 7."
     },
     {
@@ -62,7 +75,9 @@
       "category": "relevant",
       "question": "What was the result of the Customs Reference No.38 of 2009?",
       "reference_answer": "The Customs Reference was dismissed by the Peshawar High Court, effectively restoring the original order of confiscation.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: tests outcome retrieval."
     },
     {
@@ -70,7 +85,9 @@
       "category": "relevant",
       "question": "Are Customs proceedings affected by the Foreign Exchange Regulation Act?",
       "reference_answer": "Yes, cases involving the smuggling of foreign currency are registered and processed under the Customs Act, 1969, read with the Foreign Exchange Regulation Act, 1947.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: cross-reference between Acts."
     },
     {
@@ -78,7 +95,9 @@
       "category": "relevant",
       "question": "Where was the petitioner intercepted in the case of Minhajuddin v. Collector of Customs?",
       "reference_answer": "The petitioner was intercepted at the International Departure Lounge of the Peshawar Airport.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: location retrieval."
     },
     {
@@ -86,7 +105,9 @@
       "category": "relevant",
       "question": "Did the petitioner provide a declaration under section 139 of the Customs Act?",
       "reference_answer": "The petitioner failed to prove lawful possession and did not make a valid declaration of the foreign currency before departure.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: testing factual negative."
     },
     {
@@ -94,7 +115,9 @@
       "category": "relevant",
       "question": "What is the role of the Additional Collector Customs as an Adjudicating Officer?",
       "reference_answer": "The Additional Collector Customs acts as the Adjudicating Officer under Section 179 of the Customs Act, 1969, to pass orders regarding the confiscation of goods.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: testing role definition."
     },
     {
@@ -102,7 +125,9 @@
       "category": "relevant",
       "question": "How did the Customs Appellate Tribunal handle the appeal filed by Customs authorities?",
       "reference_answer": "The Tribunal allowed the appeal, set aside the order of the Collector (Appeals), and restored the original confiscation order.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: procedural history."
     },
     {
@@ -110,7 +135,9 @@
       "category": "relevant",
       "question": "Can ANF staff arrest or seize currency under the Customs Act?",
       "reference_answer": "No, unless specifically notified as Customs Officers under Section 6 of the Act, but they are empowered to assist Customs under Section 7.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Conceptual: clarification of legal authority."
     },
     {
@@ -118,7 +145,9 @@
       "category": "relevant",
       "question": "When was the judgment for Customs Reference No.38 of 2009 decided?",
       "reference_answer": "The judgment was decided on 20th December, 2010.",
-      "expected_record_ids": ["PHC_2010_1"],
+      "expected_record_ids": [
+        "PHC_2010_1"
+      ],
       "notes": "Exact-token: date verification."
     },
     {

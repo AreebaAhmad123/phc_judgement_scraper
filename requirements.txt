@@ -13,6 +13,7 @@ urllib3==2.7.0
 APScheduler==3.11.3
 fastapi==0.139.0
 uvicorn[standard]==0.51.0
+slowapi==0.1.10  # rate limiting for /chat and /ingest/run
 python-dotenv==1.2.2
 weaviate-client==4.22.0
 sentence-transformers==5.6.0

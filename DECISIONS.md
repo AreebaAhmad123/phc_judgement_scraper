@@ -404,62 +404,38 @@ concrete before/after example on a real question.
 [paste the output of `python -m eval.demo_rerank_example "<a real question>"` here]
 ```
 
-Measured effect (baseline vs rerank, from `eval/report.py`):
-
-| Metric | baseline | rerank | delta |
-|---|---|---|---|
-| Recall@k | [fill in] | [fill in] | [fill in] |
-| MRR | [fill in] | [fill in] | [fill in] |
-| Citation precision | [fill in] | [fill in] | [fill in] |
-| Latency (s) | [fill in] | [fill in] | [fill in] |
-
-**Interpretation**: [write 2-3 sentences here once you have real
-numbers — e.g. did MRR improve because the reranker pulled the right
-chunk from rank 3-4 up to rank 1? Did latency cost noticeably more per
-query, and was that worth it given the recall/MRR change?]
+**Full before/after numbers, what's measured vs still pending, and why:
+see `DECISIONS_STAGE3_ADDENDUM.md`.** Short version: `baseline` is
+measured for real (20-entry eval set, `eval/results/baseline.json`) —
+recall@k 0.600, MRR 0.419, citation precision 0.351. The
+rerank/hybrid/hybrid_rerank/full comparisons are not yet run for real
+(LLM API quota currently exhausted); a `--retrieval-only` mode was
+added to `run_eval.py` so recall@k/MRR for those configs can still be
+measured with zero LLM calls in the meantime — see the addendum for
+the exact commands and what's expected once the full run completes.
 
 **Hybrid search**: Weaviate's built-in hybrid query (BM25 + vector,
 server-side fusion via `alpha`) rather than a separate BM25 index kept in
 sync with ingestion — see `phc_scraper/retrieval.py`'s docstring for the
 full reasoning. Expected to help most on exact-token queries (citations,
 case numbers, judge names) and to help little or not at all on
-conceptual/paraphrased queries.
-
-Measured effect (baseline vs hybrid):
-
-| Metric | baseline | hybrid | delta |
-|---|---|---|---|
-| Recall@k | [fill in] | [fill in] | [fill in] |
-| MRR | [fill in] | [fill in] | [fill in] |
-
-**Interpretation**: [once you have real numbers, break this down by the
-two query kinds in your eval set — exact-token vs conceptual — since the
-aggregate number alone can hide a real effect that only shows up on one
-subset. If hybrid didn't help on your eval set overall, say why you
-think that is instead of tuning `hybrid_alpha` until it does.]
+conceptual/paraphrased queries — measured effect: pending, see addendum.
 
 **Query classification**: three-way classifier (relevant / irrelevant /
 meta) — see `phc_scraper/query_classifier.py`'s docstring for the full
 definition of "irrelevant" used here and its documented failure modes
 (jurisdiction-boundary questions, legal-vocabulary-but-off-corpus
-questions).
-
-Measured: `classification_accuracy` from the `full` config's
-`eval/results/full.json` = **[fill in]**, out of [N] labeled entries.
-
-**Interpretation**: [once measured — which category did it get wrong,
-if any? Does that match the failure modes already anticipated in the
-docstring, or something new?]
+questions). `classification_accuracy` from the `full` config: pending
+the same LLM-quota blocker — see addendum.
 
 ### What didn't help (if applicable)
 
-[Be specific here once you've actually run the eval. Possibilities to
-watch for, not things to force: hybrid search showing no improvement or
-a slight regression on conceptual queries; reranking's latency cost
-outweighing a small recall/MRR gain for this corpus's size; the
-classifier misfiring on a specific phrasing pattern in your eval set. If
-nothing regressed, say that plainly too — a clean set of improvements is
-also a valid, reportable result, as long as the numbers back it up.]
+See `DECISIONS_STAGE3_ADDENDUM.md` section 4 for what's already
+expected *not* to help and why (hybrid search on exact-citation
+lookups that dense retrieval already nails; reranking when the true
+answer isn't in the candidate pool to begin with) — written before the
+real numbers exist specifically so it's a real prediction to check
+against, not a post-hoc rationalization once the numbers are in.
 
 ### Why these particular technology choices (and what was rejected)
 

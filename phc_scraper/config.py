@@ -12,10 +12,6 @@ from urllib.parse import urlparse
 
 from .courts import get_court
 _court = get_court()
-# TARGET SITE
-# BASE_URL = "https://www.peshawarhighcourt.gov.pk/PHCCMS/"
-# SEARCH_PAGE_URL = BASE_URL + "reportedJudgments.php"
-# SEARCH_ACTION_URL = BASE_URL + "reportedJudgments.php?action=search"
 
 BASE_URL = _court.base_url
 SEARCH_PAGE_URL = _court.search_page_url
@@ -58,7 +54,6 @@ BROWSER_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    # "Origin": "https://www.peshawarhighcourt.gov.pk",
     "Origin": _court.source_website,
     "Sec-Fetch-Site": "same-origin",
     "Sec-Fetch-Mode": "navigate",
@@ -91,7 +86,6 @@ PDF_STREAM_BACKOFF_BASE = 3.0  # seconds; doubles each attempt
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-# PDF_DIR = os.path.join(PROJECT_ROOT, "downloaded_pdfs")
 
 PDF_DIR = os.path.join(PROJECT_ROOT, "pdfs")
 SC_PDF_DIR = os.path.join(PDF_DIR, "sc_judgments")
@@ -159,6 +153,31 @@ OCR_DPI = int(os.environ.get("OCR_DPI", 300))
 QUERY_CLASSIFIER_MODEL = os.environ.get("QUERY_CLASSIFIER_MODEL", "llama-3.1-8b-instant")
 RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+# --- API service: auth, rate limiting, CORS ---
+# REQUIRE_API_KEY defaults to True. Set to "false" only for local dev
+# against a service with no public exposure - never in a deployed
+# environment. When required, every request to /chat and /ingest/*
+# must carry a matching X-API-Key header (see api/auth.py).
+REQUIRE_API_KEY = os.environ.get("REQUIRE_API_KEY", "true").lower() == "true"
+API_KEY = os.environ.get("API_KEY")
+
+# Requests per minute, per client IP, enforced on /chat and /ingest/run -
+# both endpoints trigger paid/rate-limited calls downstream (Groq,
+# embeddings, Weaviate, S3), so an unauthenticated-looking flood (even
+# from a holder of a valid key) shouldn't be able to run the account's
+# quota to zero. Two separate limits since /ingest/run is far more
+# expensive per call than /chat and should be throttled harder.
+CHAT_RATE_LIMIT = os.environ.get("CHAT_RATE_LIMIT", "30/minute")
+INGEST_RATE_LIMIT = os.environ.get("INGEST_RATE_LIMIT", "2/minute")
+
+# Comma-separated list of allowed origins for browser-based clients
+# (e.g. a chat UI served from a different host). Empty = no cross-origin
+# access at all, which is the safe default for a service with no
+# frontend of its own yet.
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+
 # --- Brief Section 4: LLM-based metadata field extraction ---
 # Same Groq account/key as llm.py and query_classifier.py - one provider,
 # one key to manage. A larger/smarter model than the query classifier's
@@ -172,10 +191,6 @@ METADATA_LLM_MODEL = os.environ.get("METADATA_LLM_MODEL", "llama-3.3-70b-versati
 # matter most for these fields are almost always in the first and last
 # portions of the document, which this cap keeps in full).
 METADATA_LLM_MAX_CHARS = int(os.environ.get("METADATA_LLM_MAX_CHARS", "20000"))
-
-# for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR):
-#     os.makedirs(_dir, exist_ok=True)
-
 
 for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR, METADATA_DIR):
     os.makedirs(_dir, exist_ok=True)

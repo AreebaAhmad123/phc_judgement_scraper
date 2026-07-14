@@ -14,8 +14,11 @@ What it does
      sc_judgment_pdf_url, sc_judgment_local_pdf_path, sc_judgment_pdf_sha256
 3. Rewrites judgment_local_pdf_path from an absolute, machine-specific path
    (e.g. "C:\\Users\\Admin\\Desktop\\...\\downloaded_pdfs\\foo.pdf") to a
-   portable relative one ("downloaded_pdfs/foo.pdf"), and checks whether
-   that file is actually sitting in this repo's downloaded_pdfs/ folder.
+   portable relative one under this repo's current PDF folder
+   (config.PDF_DIR, i.e. "pdfs/foo.pdf" - NOT "downloaded_pdfs/", which
+   was this project's old folder name before the brief-compliant
+   pipeline's naming convention), and checks whether that file is
+   actually sitting there.
      - If it IS there: keeps the reference, recomputes sha256 from the
        real file (never trusts a stale hash from the old JSON).
      - If it's NOT there: clears the path/hash to None instead of pointing
@@ -23,9 +26,9 @@ What it does
        the next real scrape run will treat it as "missing" and (re)download
        it, which is exactly the "backfill anything missing" behaviour you
        want. It does mean: copy your old downloaded_pdfs/*.pdf files into
-       this repo's downloaded_pdfs/ folder BEFORE running this script, or
-       before your first real scrape run, if you want to avoid re-downloading
-       PDFs you already have.
+       this repo's pdfs/ folder (config.PDF_DIR) BEFORE running this
+       script, or before your first real scrape run, if you want to
+       avoid re-downloading PDFs you already have.
 4. Writes everything into the current JudgmentStore (data/judgments.json),
    keyed by id, through the normal atomic-save path - so running the real
    scraper afterwards sees these as already-known ids (no duplicate rows)
@@ -38,8 +41,8 @@ Usage
     python migrate_legacy_data.py path/to/old_judgments.json
 
     # If your old PDFs are sitting somewhere other than this repo's
-    # downloaded_pdfs/ folder, copy them in first, e.g.:
-    #   cp /path/to/old/downloaded_pdfs/*.pdf downloaded_pdfs/
+    # pdfs/ folder (config.PDF_DIR), copy them in first, e.g.:
+    #   cp /path/to/old/downloaded_pdfs/*.pdf pdfs/
 """
 import argparse
 import json

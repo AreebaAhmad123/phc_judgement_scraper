@@ -23,6 +23,45 @@ metadata/
 
 # Secrets - never commit any of these
 .env
+.env.local
+.env.*.local
 client_secret.json
 token.json
 service_account.json
+
+# IDE and Editor config
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Generated output files
+results/
+downloaded_pdfs/
+eval/results/
+
+# Python build artifacts
+*.egg-info/
+dist/
+build/
+
+# Cache and coverage
+.mypy_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Database and persistent local files
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# System files
+Thumbs.db
+*.log
