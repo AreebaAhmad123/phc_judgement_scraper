@@ -144,7 +144,7 @@ for why that split makes sense.
 ```bash
 # Brief-compliant pipeline (default) - scrape -> pdf -> md -> Section 4
 # json -> S3 -> external judgment API. Needs AWS + EXTERNAL_JUDGMENT_API_KEY
-# + CONTACT_EMAIL filled in .env first.
+# CONTACT_EMAIL filled in .env first.
 python -m phc_scraper.cli
 python -m phc_scraper.cli --years 2025 2026
 

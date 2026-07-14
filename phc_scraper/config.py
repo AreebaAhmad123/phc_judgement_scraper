@@ -31,8 +31,7 @@ RESULTS_PER_PAGE = 25  # DataTables pageLength the site's own JS uses
 # browser-like header set to get past a WAF/session guard, flip this - but
 # throttling and robots.txt compliance below apply either way; only the
 # identification string changes.
-IDENTIFY_AS_BROWSER = os.environ.get("IDENTIFY_AS_BROWSER", "false").lower() == "true"
-
+IDENTIFY_AS_BROWSER = os.environ.get("IDENTIFY_AS_BROWSER", "true").lower() == "true"
 # TODO: replace with the real contact address before running this
 # against the live site - this placeholder must not ship in the honest
 # User-Agent string (see IDENTIFY_AS_BROWSER above).
@@ -191,6 +190,7 @@ METADATA_LLM_MODEL = os.environ.get("METADATA_LLM_MODEL", "llama-3.3-70b-versati
 # matter most for these fields are almost always in the first and last
 # portions of the document, which this cap keeps in full).
 METADATA_LLM_MAX_CHARS = int(os.environ.get("METADATA_LLM_MAX_CHARS", "20000"))
+METADATA_LLM_MIN_DELAY_SECONDS = float(os.environ.get("METADATA_LLM_MIN_DELAY_SECONDS", "3"))
 
 for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR, METADATA_DIR):
     os.makedirs(_dir, exist_ok=True)

@@ -23,6 +23,9 @@ services:
       CLUSTER_HOSTNAME: "node1"
     volumes:
       - weaviate_data:/var/lib/weaviate
+      - ./pdfs:/app/pdfs
+      - ./markdown:/app/markdown
+      - ./metadata:/app/metadata
 
   app:
     build: .

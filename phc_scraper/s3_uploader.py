@@ -13,6 +13,46 @@ CONTENT_TYPES = {
     ".json": "application/json",
 }
 
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
+
+
+class S3ConfigError(RuntimeError):
+    """Raised by verify_credentials() when S3 isn't usable. Callers must
+    let this propagate and halt the run, same contract as
+    external_api.ExternalAPIAuthError."""
+
+
+def verify_credentials() -> None:
+    """Call once at the start of a run, before any per-judgment work."""
+    if not config.AWS_ACCESS_KEY_ID or not config.AWS_SECRET_ACCESS_KEY:
+        raise S3ConfigError(
+            "AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are not set in .env.")
+    if not config.S3_BUCKET_NAME:
+        raise S3ConfigError("S3_BUCKET_NAME is not set in .env.")
+
+    try:
+        _client().head_bucket(Bucket=config.S3_BUCKET_NAME)
+    except NoCredentialsError as exc:
+        raise S3ConfigError(f"AWS credentials rejected: {exc}") from exc
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code", "")
+        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        if status == 404 or code in ("404", "NoSuchBucket"):
+            raise S3ConfigError(
+                f"S3 bucket {config.S3_BUCKET_NAME!r} does not exist in "
+                f"region {config.AWS_REGION!r}. Check S3_BUCKET_NAME and "
+                f"AWS_REGION in .env.") from exc
+        if status == 403 or code in ("403", "AccessDenied", "InvalidAccessKeyId",
+                                     "SignatureDoesNotMatch"):
+            raise S3ConfigError(
+                f"AWS credentials were rejected or lack access to bucket "
+                f"{config.S3_BUCKET_NAME!r} ({code}).") from exc
+        raise S3ConfigError(f"Could not verify S3 access: {exc}") from exc
+    except BotoCoreError as exc:
+        raise S3ConfigError(f"Could not reach AWS S3: {exc}") from exc
+
+    logger.info("S3 credentials verified: bucket %r reachable in %s.",
+               config.S3_BUCKET_NAME, config.AWS_REGION)
 
 def _client():
     return boto3.client(

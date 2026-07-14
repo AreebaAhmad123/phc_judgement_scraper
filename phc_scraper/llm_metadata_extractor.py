@@ -19,11 +19,24 @@ fields are null this run."
 """
 import json
 import re
+import time
 
-from groq import Groq
+from groq import Groq, RateLimitError
 
 from . import config
 from .logging_setup import logger
+
+_last_call_ts = 0.0
+_MAX_RATE_LIMIT_RETRIES = 4
+_RATE_LIMIT_BACKOFF_BASE = 15.0
+
+def _pace():
+    global _last_call_ts
+    elapsed = time.monotonic() - _last_call_ts
+    wait = config.METADATA_LLM_MIN_DELAY_SECONDS - elapsed
+    if wait > 0:
+        time.sleep(wait)
+    _last_call_ts = time.monotonic()
 
 # Keys this module is responsible for, with their expected JSON type -
 # used both to build the prompt's schema description and to validate/
@@ -170,24 +183,47 @@ def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
         f"Judgment text:\n\n{document}"
     )
 
-    try:
-        response = client.chat.completions.create(
-            model=config.METADATA_LLM_MODEL,
-            max_tokens=1500,
-            temperature=0,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-        )
-        raw_text = response.choices[0].message.content
-        parsed = json.loads(_strip_code_fences(raw_text))
-        if not isinstance(parsed, dict):
-            raise ValueError(f"Expected a JSON object, got {type(parsed).__name__}")
-        return _coerce(parsed)
-    except Exception as exc:  # noqa: BLE001 - API error, timeout, malformed JSON, etc.
-        logger.warning(
-            "LLM metadata extraction failed for case_info=%r (%s); "
-            "leaving these fields null/empty for this run.", case_info, exc,
-        )
-        return _empty_result()
+    for attempt in range(1, _MAX_RATE_LIMIT_RETRIES + 1):
+        _pace()
+        try:
+            response = client.chat.completions.create(
+                model=config.METADATA_LLM_MODEL,
+                max_tokens=1500,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+            )
+
+            raw_text = response.choices[0].message.content
+            parsed = json.loads(_strip_code_fences(raw_text))
+            if not isinstance(parsed, dict):
+                logger.warning(
+                    "LLM returned non-object (%s); case_info=%r",
+                    type(parsed).__name__, case_info,
+                )
+                return _empty_result()
+            return _coerce(parsed)
+
+        except RateLimitError as exc:
+            if attempt < _MAX_RATE_LIMIT_RETRIES:
+                wait = _RATE_LIMIT_BACKOFF_BASE * (2 ** (attempt - 1))
+                logger.warning(
+                    "Groq rate limit hit (attempt %d/%d); retrying in %.0fs.",
+                    attempt, _MAX_RATE_LIMIT_RETRIES, wait,
+                )
+                time.sleep(wait)
+                continue
+            logger.warning("Groq rate limit persisted (case_info=%r); giving up.", case_info)
+            return _empty_result()
+
+        except Exception as exc:  # noqa: BLE001 - API error, timeout, malformed JSON, etc.
+            logger.warning(
+                "LLM metadata extraction failed for case_info=%r (%s); "
+                "leaving these fields null/empty for this run.",
+                case_info, exc,
+            )
+            return _empty_result()
+
+    return _empty_result()

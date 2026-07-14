@@ -124,6 +124,12 @@ def _decide_action(row: dict, state: ProcessedState) -> str:
 
 
 def run_pipeline(years=None) -> None:
+    from .s3_uploader import S3ConfigError
+    try:
+        s3_uploader.verify_credentials()
+    except S3ConfigError as exc:
+        logger.error("Aborting before any work starts: %s", exc)
+        raise
     court = get_court()
     years = years if years is not None else config.YEARS
     state = ProcessedState()
