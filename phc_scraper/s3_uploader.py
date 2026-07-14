@@ -30,6 +30,11 @@ def verify_credentials() -> None:
     if not config.S3_BUCKET_NAME:
         raise S3ConfigError("S3_BUCKET_NAME is not set in .env.")
 
+    # Allow CI/tests to skip the real network check (set SKIP_S3_CHECK=1 in CI or test env)
+    if os.getenv("SKIP_S3_CHECK"):
+        logger.info("Skipping S3 head_bucket check because SKIP_S3_CHECK is set.")
+        return
+
     try:
         _client().head_bucket(Bucket=config.S3_BUCKET_NAME)
     except NoCredentialsError as exc:

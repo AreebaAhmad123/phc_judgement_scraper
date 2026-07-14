@@ -75,6 +75,7 @@ def _isolate_paths(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "ThrottledClient", lambda: _FakeClient())
     monkeypatch.setattr(pipeline.s3_uploader, "download_state_if_exists", lambda *a, **k: False)
     monkeypatch.setattr(pipeline.s3_uploader, "upload_state", lambda *a, **k: None)
+    monkeypatch.setattr(pipeline.s3_uploader, "verify_credentials", lambda *a, **k: None)
     monkeypatch.setattr(pipeline, "fetch_year_html", lambda client, year: "<html></html>")
     monkeypatch.setattr(
         pipeline, "parse_results_table", lambda html, year: ([_row()], None)

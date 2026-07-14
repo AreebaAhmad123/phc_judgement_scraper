@@ -39,6 +39,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "ci-placeholder"
           S3_BUCKET_NAME: "ci-placeholder-bucket"
           CONTACT_EMAIL: "ci@example.com"
+          SKIP_S3_CHECK: "1"
         run: pytest tests/ -v
 
       - name: Byte-compile check (whole repo)
