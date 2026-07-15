@@ -2,11 +2,16 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from phc_scraper import config
 from phc_scraper.logging_setup import configure_logging
 from phc_scraper.weaviate_client import ensure_schema, close_client
 
 from . import routes_chat, routes_ingest
+from .limiter import limiter
 
 
 @asynccontextmanager
@@ -25,6 +30,24 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Cross-origin access is opt-in: empty CORS_ALLOWED_ORIGINS (the default)
+# means no browser-based client on a different origin can call this API
+# at all. Set CORS_ALLOWED_ORIGINS in .env to the specific origin(s) of
+# a real frontend when one exists - never "*" for a service that sits
+# behind an API key, since a wildcard origin plus credentialed requests
+# is a common misconfiguration.
+if config.CORS_ALLOWED_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["X-API-Key", "Content-Type"],
+    )
 
 app.include_router(routes_chat.router)
 app.include_router(routes_ingest.router)

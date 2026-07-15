@@ -89,20 +89,29 @@ def _ensure_gdrive_link(store, record, field_prefix):
     if not local_path:
         return record.get(url_field)
 
-    if not config.GDRIVE_UPLOAD_ENABLED:
-        return record.get(url_field)  # skipped for speed - existing link (if any) is preserved, nothing new attempted
-
+    # Resolve an absolute path and backfill a missing sha256 from the
+    # file on disk if present. This backfill is independent of whether
+    # Drive uploads are enabled - we want the local-store state to be
+    # repaired even when uploads are disabled for speed/CI.
     abs_path = os.path.join(config.PROJECT_ROOT, local_path)
     if not os.path.exists(abs_path):
         logger.warning("%s: %s references a missing PDF (%s); skipping "
                        "Drive upload.", record["id"], field_prefix, local_path)
         return None
 
+    backfilled = False
     if not sha256:
         sha256 = _sha256_of_file(abs_path)
         store.set_field(record["id"], f"{field_prefix}_pdf_sha256", sha256)
         logger.info("%s: backfilled missing %s_pdf_sha256 from the file "
                    "already on disk.", record["id"], field_prefix)
+        backfilled = True
+
+    # If uploads are disabled and we didn't just backfill a sha256 from
+    # disk, there's nothing to do here. If we *did* backfill, proceed so
+    # the record can be fully repaired (upload + URL persisted).
+    if not config.GDRIVE_UPLOAD_ENABLED and not backfilled:
+        return record.get(url_field)
 
     if record.get(url_field):
         return record[url_field]

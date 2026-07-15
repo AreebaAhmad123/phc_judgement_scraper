@@ -48,6 +48,9 @@ from urllib.parse import unquote, urlparse
 from . import config
 from .logging_setup import logger
 
+from .naming import local_pdf_path, source_file
+from .courts import get_court
+
 _UNSAFE_CHARS = re.compile(r'[\\/:*?"<>|]')
 _PDF_MAGIC = b"%PDF-"
 
@@ -80,28 +83,15 @@ def _looks_like_pdf(path):
         return False
 
 
-def _resolve_dest_path(dest_dir, remote_url, record_id, store):
-    """Returns (relative_path, absolute_path). relative_path is what gets
-    stored in the JSON (portable across machines); absolute_path is where
-    we actually read/write on this machine."""
-    basename = _safe_filename(remote_url)
-    rel_plain = os.path.relpath(os.path.join(dest_dir, basename), config.PROJECT_ROOT)
+def _brief_dest_path(remote_url: str, stem_override: str | None = None) -> tuple[str, str]:
+    """Returns (relative_path, absolute_path) using brief naming.
+    stem_override: pass the same disambiguated stem used for this
+    judgment's markdown/json/S3 paths (see naming.safe_file_stem) so all
+    artifacts for one judgment land under the same collision-safe name."""
+    rel = os.path.relpath(local_pdf_path(remote_url, stem_override), config.PROJECT_ROOT)
+    return rel, os.path.join(config.PROJECT_ROOT, rel)
 
-    owner = store.owner_of_local_path(rel_plain) if store is not None else None
-    if owner is None or owner == record_id:
-        return rel_plain, os.path.join(config.PROJECT_ROOT, rel_plain)
-
-    disambiguated = f"{record_id}__{basename}"
-    rel_disambiguated = os.path.relpath(
-        os.path.join(dest_dir, disambiguated), config.PROJECT_ROOT)
-    logger.warning(
-        "Filename collision: %s already used by record %s; saving %s's "
-        "download as %s instead.", basename, owner, record_id, disambiguated,
-    )
-    return rel_disambiguated, os.path.join(config.PROJECT_ROOT, rel_disambiguated)
-
-
-def download_pdf(client, remote_url, record_id, store, kind="judgment"):
+def download_pdf(client, remote_url, record_id, store, kind="judgment", stem_override=None):
     """Returns (relative_local_path, sha256) or (None, None).
 
     Important streaming-retry note: urllib3's Retry adapter (wired into
@@ -116,11 +106,15 @@ def download_pdf(client, remote_url, record_id, store, kind="judgment"):
     """
     if not remote_url:
         return None, None
+    
+    if kind == "judgment":
+        rel_path, local_path = _brief_dest_path(remote_url, stem_override)
+    else:
+        dest_dir = config.SC_PDF_DIR
+        rel_path, local_path = _brief_dest_path(remote_url, stem_override)
 
-    dest_dir = config.PDF_DIR if kind == "judgment" else config.SC_PDF_DIR
-    rel_path, local_path = _resolve_dest_path(dest_dir, remote_url, record_id, store)
-
-    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+    # if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+    if os.path.exists(local_path) and os.path.getsize(local_path) >= config.MIN_PDF_BYTES:
         return rel_path, _sha256_of_file(local_path)
 
     os.makedirs(os.path.dirname(local_path), exist_ok=True)

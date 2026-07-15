@@ -376,3 +376,85 @@ hypothetical edge cases:
   "we checked, and it wasn't actually broken" - is worth writing down
   with the same care as a fix, not silently dropped once it stopped
   being alarming.
+
+
+
+
+
+---
+
+## Stage 3: reranking, hybrid search, query classification, evaluation
+
+**Read this first**: the numbers in this section are placeholders —
+fill them in from your own `eval/report.py` output after replacing
+`eval/eval_set.json`'s placeholder entries with real questions against
+your ingested judgments. Don't publish this section with fabricated
+numbers; an honest "here's what I measured" beats a plausible-looking
+table nobody can reproduce.
+
+### What was tried
+
+**Reranking**: a cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`)
+re-scores a candidate pool of 20 vector/hybrid hits down to the top 5,
+scoring (query, chunk) jointly rather than comparing independent
+embeddings. See `eval/demo_rerank_example.py`'s output below for a
+concrete before/after example on a real question.
+
+```
+[paste the output of `python -m eval.demo_rerank_example "<a real question>"` here]
+```
+
+**Full before/after numbers, what's measured vs still pending, and why:
+see `DECISIONS_STAGE3_ADDENDUM.md`.** Short version: `baseline` is
+measured for real (20-entry eval set, `eval/results/baseline.json`) —
+recall@k 0.600, MRR 0.419, citation precision 0.351. The
+rerank/hybrid/hybrid_rerank/full comparisons are not yet run for real
+(LLM API quota currently exhausted); a `--retrieval-only` mode was
+added to `run_eval.py` so recall@k/MRR for those configs can still be
+measured with zero LLM calls in the meantime — see the addendum for
+the exact commands and what's expected once the full run completes.
+
+**Hybrid search**: Weaviate's built-in hybrid query (BM25 + vector,
+server-side fusion via `alpha`) rather than a separate BM25 index kept in
+sync with ingestion — see `phc_scraper/retrieval.py`'s docstring for the
+full reasoning. Expected to help most on exact-token queries (citations,
+case numbers, judge names) and to help little or not at all on
+conceptual/paraphrased queries — measured effect: pending, see addendum.
+
+**Query classification**: three-way classifier (relevant / irrelevant /
+meta) — see `phc_scraper/query_classifier.py`'s docstring for the full
+definition of "irrelevant" used here and its documented failure modes
+(jurisdiction-boundary questions, legal-vocabulary-but-off-corpus
+questions). `classification_accuracy` from the `full` config: pending
+the same LLM-quota blocker — see addendum.
+
+### What didn't help (if applicable)
+
+See `DECISIONS_STAGE3_ADDENDUM.md` section 4 for what's already
+expected *not* to help and why (hybrid search on exact-citation
+lookups that dense retrieval already nails; reranking when the true
+answer isn't in the candidate pool to begin with) — written before the
+real numbers exist specifically so it's a real prediction to check
+against, not a post-hoc rationalization once the numbers are in.
+
+### Why these particular technology choices (and what was rejected)
+
+- Weaviate's native hybrid search over a separate BM25 index (rank_bm25,
+  Elasticsearch): avoids a second index that has to be kept in sync with
+  incremental ingestion (see `ingest.py`'s incremental state tracking) —
+  Weaviate already indexes the `text` property for keyword search as a
+  byproduct of storing it.
+- A cross-encoder over a second embedding-similarity reranking pass: a
+  cross-encoder scores the (query, chunk) pair jointly through one
+  transformer forward pass, which is structurally more accurate at
+  relevance judgment than comparing two independently-computed vectors —
+  the standard reason cross-encoders outperform bi-encoders at reranking,
+  at the cost of not being usable over the whole corpus (hence: rerank a
+  small candidate pool, not everything).
+- An LLM-based query classifier over an embedding-centroid similarity
+  classifier: an embedding-similarity threshold is cheaper and needs no
+  extra API call, but is more easily fooled by a well-phrased off-domain
+  question that happens to embed near the corpus's legal vocabulary
+  (discussed in the classifier's docstring) — the LLM call is a small,
+  bounded cost per question and was judged worth it for a more defensible
+  "irrelevant" boundary.

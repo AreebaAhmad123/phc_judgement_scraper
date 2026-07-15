@@ -15,17 +15,28 @@ Usage:
 import argparse
 import os
 import sys
+from typing import Set
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from phc_scraper import config  # noqa: E402
 from phc_scraper.pdf_downloader import _looks_like_pdf, _sha256_of_file  # noqa: E402
 from phc_scraper.storage import JudgmentStore  # noqa: E402
+from phc_scraper.weaviate_client import delete_chunks_for_record  # noqa: E402
 
 FIELD_PAIRS = [
     ("judgment_local_pdf_path", "judgment_pdf_sha256", "judgments"),
     ("sc_judgment_local_pdf_path", "sc_judgment_pdf_sha256", "sc_judgments"),
 ]
+
+
+def _delete_weaviate_chunks_for_record(record_id, dry_run):
+    if dry_run or not record_id:
+        return
+    try:
+        delete_chunks_for_record(record_id)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"Warning: failed to delete Weaviate chunks for {record_id}: {exc}", file=sys.stderr)
 
 
 def audit_pdf(store, record, path_field, sha_field, dry_run):
@@ -40,6 +51,7 @@ def audit_pdf(store, record, path_field, sha_field, dry_run):
         if not dry_run:
             store.set_field(record["id"], path_field, None)
             store.set_field(record["id"], sha_field, None)
+            _delete_weaviate_chunks_for_record(record["id"], dry_run=False)
         return (record["id"], rel_path, action)
 
     if not _looks_like_pdf(abs_path):
@@ -48,6 +60,7 @@ def audit_pdf(store, record, path_field, sha_field, dry_run):
             os.remove(abs_path)
             store.set_field(record["id"], path_field, None)
             store.set_field(record["id"], sha_field, None)
+            _delete_weaviate_chunks_for_record(record["id"], dry_run=False)
         return (record["id"], rel_path, action)
 
     if not rel_path.lower().endswith(".pdf"):
@@ -84,7 +97,39 @@ def audit_orphan_markdown(store, record, path_field, md_subdir, dry_run):
     action = "DELETE orphaned markdown (no backing PDF)"
     if not dry_run:
         os.remove(md_path)
+        _delete_weaviate_chunks_for_record(record["id"], dry_run=False)
     return (record["id"], os.path.relpath(md_path, config.PROJECT_ROOT), action)
+
+
+def reconcile_weaviate_against_store(store, dry_run=False):
+    """Delete Weaviate chunks whose record_id is no longer present in the store."""
+    record_ids = {record["id"] for record in store.all_records() if record.get("id")}
+    if not record_ids:
+        return []
+
+    client = None
+    try:
+        from phc_scraper.weaviate_client import get_client
+        client = get_client()
+        collection = client.collections.get(config.WEAVIATE_COLLECTION)
+        result = collection.query.fetch_objects(limit=1000)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"Warning: could not query Weaviate for reconciliation: {exc}", file=sys.stderr)
+        return []
+
+    stale_record_ids = set()
+    for obj in result.objects:
+        record_id = obj.properties.get("record_id")
+        if record_id and record_id not in record_ids:
+            stale_record_ids.add(record_id)
+
+    if dry_run:
+        return sorted(stale_record_ids)
+
+    for record_id in sorted(stale_record_ids):
+        _delete_weaviate_chunks_for_record(record_id, dry_run=False)
+
+    return sorted(stale_record_ids)
 
 
 def main():
@@ -109,6 +154,13 @@ def main():
 
     if not args.dry_run and (pdf_findings or orphan_findings):
         store.save()
+
+    stale_ids = reconcile_weaviate_against_store(store, dry_run=args.dry_run)
+    if stale_ids:
+        action_label = "Would delete" if args.dry_run else "Deleted"
+        print(f"\n{action_label} {len(stale_ids)} stale Weaviate record(s):")
+        for record_id in stale_ids:
+            print(f"  {record_id}")
 
     suffix = " (dry run, nothing changed)" if args.dry_run else ""
     print(f"Checked {len(store.all_records())} records.")

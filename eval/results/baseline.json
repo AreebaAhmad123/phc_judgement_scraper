@@ -1,0 +1,544 @@
+{
+  "summary": {
+    "config_name": "baseline",
+    "config_flags": {
+      "use_hybrid": false,
+      "use_rerank": false,
+      "skip_classification": true
+    },
+    "retrieval_only": false,
+    "n_entries": 20,
+    "mean_recall_at_k": 0.6,
+    "mean_mrr": 0.4189,
+    "mean_citation_precision": 0.3357,
+    "mean_semantic_answer_similarity": 0.5749,
+    "classification_accuracy": null,
+    "mean_latency_seconds": 0.8024
+  },
+  "per_entry": [
+    {
+      "id": "rel-01",
+      "category": "relevant",
+      "question": "What did the PHC decide in 2011 PTD 862 regarding the ANF staff's role?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2016_186",
+        "PHC_2012_80",
+        "PHC_2024_40",
+        "PHC_2017_175",
+        "PHC_2024_40"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 15.125,
+      "cited_record_ids": [],
+      "generated_answer": "The provided excerpts don't contain enough information to answer the question regarding the PHC decision in 2011 PTD 862 about the ANF staff's role.",
+      "citation_precision": null,
+      "semantic_answer_similarity": 0.4394667395164843
+    },
+    {
+      "id": "rel-02",
+      "category": "relevant",
+      "question": "Can Customs Appellate Tribunals allow additional grounds during an appeal?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2024_109",
+        "PHC_2015_208",
+        "PHC_2015_169",
+        "PHC_2010_1",
+        "PHC_2020_109"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.047,
+      "cited_record_ids": [
+        "PHC_2015_169",
+        "PHC_2010_1"
+      ],
+      "generated_answer": "According to [3], the Commissioner (Appeals) may allow the appellant to add new grounds in the memo of a pending appeal, subject to his satisfaction that the omission of the ground from the form of appeal was not deliberate and unreasonable. However, regarding Customs Appellate Tribunals specifically, [4] suggests they can direct or suggest a party to take certain additional grounds, but it questions whether this would prejudice the case. There is no clear indication that Customs Appellate Tribunals are explicitly allowed to do so in the provided excerpts, but [3] provides insight into the general principle of allowing additional grounds during an appeal under certain conditions.",
+      "citation_precision": 0.5,
+      "semantic_answer_similarity": 0.6178497061903215
+    },
+    {
+      "id": "rel-03",
+      "category": "relevant",
+      "question": "Does a criminal acquittal by a Special Judge affect Customs Act confiscation proceedings?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2026_105",
+        "PHC_2013_221",
+        "PHC_2015_482",
+        "PHC_2022_169",
+        "PHC_2022_69"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.046,
+      "cited_record_ids": [
+        "PHC_2026_105",
+        "PHC_2013_221",
+        "PHC_2015_482",
+        "PHC_2022_169",
+        "PHC_2022_69"
+      ],
+      "generated_answer": "The provided source excerpts do not contain information about how a criminal acquittal by a Special Judge affects Customs Act confiscation proceedings [1][2][3][4][5]. The excerpts primarily discuss the principles and scope of appeals against acquittals in criminal cases, the presumption of innocence, and the conditions under which an acquittal judgment can be interfered with. They do not mention the Customs Act or confiscation proceedings. Therefore, it is not possible to answer the question based on the given source excerpts.",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.5027292045435426
+    },
+    {
+      "id": "rel-04",
+      "category": "relevant",
+      "question": "Who were the judges in the Minhajuddin versus Collector of Customs case?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2010_1",
+        "PHC_2015_208",
+        "PHC_2020_109",
+        "PHC_2018_109",
+        "PHC_2012_42"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.032,
+      "cited_record_ids": [
+        "PHC_2010_1"
+      ],
+      "generated_answer": "The provided excerpts do not contain enough information to determine who the judges were in the Minhajuddin versus Collector of Customs case [1].",
+      "citation_precision": 1.0,
+      "semantic_answer_similarity": 0.47688359182103635
+    },
+    {
+      "id": "rel-05",
+      "category": "relevant",
+      "question": "What happens if a Customs official wants to delegate functions to other officers?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2015_167",
+        "PHC_2021_263",
+        "PHC_2015_208",
+        "PHC_2015_167",
+        "PHC_2010_1"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 0.2,
+      "latency_seconds": 0.047,
+      "cited_record_ids": [
+        "PHC_2015_167",
+        "PHC_2015_167"
+      ],
+      "generated_answer": "If a Customs official wants to delegate functions to other officers, according to Section 5 of the Customs Act [1][4], the Board may, by notification in the official Gazette, empower by name or designation certain officers to exercise powers under the Act. This includes the ability to delegate powers to Additional Collectors, Deputy Collectors, Assistant Collectors, and other customs officers. Additionally, the Directorate General, Director, and Collector may authorize any officer to exercise certain powers within a specified area [4].",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.7228481970068102
+    },
+    {
+      "id": "rel-06",
+      "category": "relevant",
+      "question": "In what case was the petitioner caught with foreign currency at Peshawar Airport on 15-8-2006?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2010_1",
+        "PHC_2010_1",
+        "PHC_2022_253",
+        "PHC_2017_140",
+        "PHC_2023_134"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.031,
+      "cited_record_ids": [
+        "PHC_2010_1"
+      ],
+      "generated_answer": "The petitioner was caught with foreign currency at Peshawar Airport on 15-8-2006 [2].",
+      "citation_precision": 1.0,
+      "semantic_answer_similarity": 0.8194798573061154
+    },
+    {
+      "id": "rel-07",
+      "category": "relevant",
+      "question": "What is the legal standing of the Customs Act regarding assistance from Police or Civil Armed Forces?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2010_1",
+        "PHC_2025_160",
+        "PHC_2025_459",
+        "PHC_2015_377",
+        "PHC_2013_152"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.031,
+      "cited_record_ids": [
+        "PHC_2010_1"
+      ],
+      "generated_answer": "The Customs Act allows for assistance from Police or Civil Armed Forces [1]. Specifically, under section 7 of the Act, officers of Police and the Civil Armed Forces are empowered and required to assist the officers of the Customs in discharge of their functions under the Act of 1969 [1]. However, the details of how this assistance is to be provided or the specific circumstances under which it is required are not clear from the provided excerpts.",
+      "citation_precision": 1.0,
+      "semantic_answer_similarity": 0.8949923278220197
+    },
+    {
+      "id": "rel-08",
+      "category": "relevant",
+      "question": "What was the result of the Customs Reference No.38 of 2009?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2020_187",
+        "PHC_2015_377",
+        "PHC_2015_377",
+        "PHC_2015_208",
+        "PHC_2025_160"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.031,
+      "cited_record_ids": [
+        "PHC_2020_187",
+        "PHC_2015_377",
+        "PHC_2015_377",
+        "PHC_2015_208",
+        "PHC_2025_160"
+      ],
+      "generated_answer": "The result of the Customs Reference No.38 of 2009 is not explicitly stated in the provided excerpts [1][2][3][4][5]. None of the given source excerpts directly mention the outcome of Customs Reference No.38 of 2009. Therefore, it's not possible to determine the result based on the information provided.",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.44650513184604274
+    },
+    {
+      "id": "rel-09",
+      "category": "relevant",
+      "question": "Are Customs proceedings affected by the Foreign Exchange Regulation Act?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2020_74",
+        "PHC_2010_1",
+        "PHC_2015_167",
+        "PHC_2015_298",
+        "PHC_2018_213"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.031,
+      "cited_record_ids": [
+        "PHC_2020_74"
+      ],
+      "generated_answer": "According to the source excerpts, Customs proceedings can be affected by the Foreign Exchange Regulation Act, as the petitioner in [1] was charged under section 12(1) of the Foreign Exchange Regulations Act, 1947, in addition to various sections of the Customs Act, 1969, and the Imports and Exports (Control) Act, 1950. This indicates that the Foreign Exchange Regulation Act can be relevant to Customs proceedings [1].",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.6636102565597861
+    },
+    {
+      "id": "rel-10",
+      "category": "relevant",
+      "question": "Where was the petitioner intercepted in the case of Minhajuddin v. Collector of Customs?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2010_1",
+        "PHC_2010_30",
+        "PHC_2025_114",
+        "PHC_2014_78",
+        "PHC_2020_109"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.047,
+      "cited_record_ids": [
+        "PHC_2010_1",
+        "PHC_2010_30",
+        "PHC_2025_114",
+        "PHC_2014_78",
+        "PHC_2020_109"
+      ],
+      "generated_answer": "The provided excerpts don't contain enough information to answer the question of where Minhajuddin was intercepted in the case of Minhajuddin v. Collector of Customs. [1][2][3][4][5]",
+      "citation_precision": 0.2,
+      "semantic_answer_similarity": 0.35618913757157294
+    },
+    {
+      "id": "rel-11",
+      "category": "relevant",
+      "question": "Did the petitioner provide a declaration under section 139 of the Customs Act?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2025_160",
+        "PHC_2015_208",
+        "PHC_2012_92",
+        "PHC_2012_93",
+        "PHC_2015_377"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.031,
+      "cited_record_ids": [
+        "PHC_2025_160",
+        "PHC_2015_208",
+        "PHC_2012_92",
+        "PHC_2012_93",
+        "PHC_2015_377"
+      ],
+      "generated_answer": "There is not enough information in the provided source excerpts to determine if the petitioner provided a declaration under section 139 of the Customs Act [1][2][3][4][5].",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.5121684530045568
+    },
+    {
+      "id": "rel-12",
+      "category": "relevant",
+      "question": "What is the role of the Additional Collector Customs as an Adjudicating Officer?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2020_109",
+        "PHC_2015_208",
+        "PHC_2025_459",
+        "PHC_2015_208",
+        "PHC_2015_167"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.047,
+      "cited_record_ids": [
+        "PHC_2020_109",
+        "PHC_2015_208",
+        "PHC_2025_459",
+        "PHC_2015_208",
+        "PHC_2015_167"
+      ],
+      "generated_answer": "The role of the Additional Collector of Customs as an Adjudicating Officer is not explicitly defined in the provided source excerpts [1] to [5]. However, according to [3], the Board may appoint an Additional Collector of Customs under Section 3 of the Act, and [5] states that the Board may empower an Additional Collector of Customs to exercise any of the powers of a Collector of Customs under the Act. \n\nFurthermore, [4] and [2] discuss the role of the Collector of Customs as an Adjudicating Authority, implying that an Adjudicating Officer must remain impartial and their decisions are subject to appellate jurisdiction. \n\nTherefore, while the exact role of an Additional Collector of Customs as an Adjudicating Officer is not specified, it can be inferred that they may be empowered to exercise some powers of a Collector of Customs, including adjudicating functions, as delegated by the Board [5].",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.7040235397303554
+    },
+    {
+      "id": "rel-13",
+      "category": "relevant",
+      "question": "How did the Customs Appellate Tribunal handle the appeal filed by Customs authorities?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2024_109",
+        "PHC_2015_208",
+        "PHC_2010_1",
+        "PHC_2011_110",
+        "PHC_2015_208"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.016,
+      "cited_record_ids": [
+        "PHC_2015_208",
+        "PHC_2010_1",
+        "PHC_2011_110"
+      ],
+      "generated_answer": "The Customs Appellate Tribunal handled the appeal filed by Customs authorities by deciding the case against the respondent [2]. The Tribunal allowed the appeal partly, directing the release of confiscated goods on payment of duty and taxes, and also affixed a redemption fine [4]. However, it is not clear from the provided excerpts if the Tribunal's decision was based on a properly filed appeal, as there are questions about the competency of the person who filed the appeal [3].",
+      "citation_precision": 0.3333333333333333,
+      "semantic_answer_similarity": 0.5491277679292649
+    },
+    {
+      "id": "rel-14",
+      "category": "relevant",
+      "question": "Can ANF staff arrest or seize currency under the Customs Act?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2010_1",
+        "PHC_2014_78",
+        "PHC_2010_1",
+        "PHC_2010_1",
+        "PHC_2015_377"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.047,
+      "cited_record_ids": [
+        "PHC_2010_1",
+        "PHC_2014_78",
+        "PHC_2010_1"
+      ],
+      "generated_answer": "According to the provided source excerpts, ANF staff cannot arrest or seize currency under the Customs Act [3]. However, they can assist in the detection, and after realizing the presence of foreign currency, they can refer the individual to the Customs Officials, who will then complete the process of recovery and register the case under the relevant provisions of the Customs Act [1][2]. The ANF staff's role is limited to referring the individual to the Customs Officials, and the actual recovery and seizure of the currency are carried out by the Customs Authorities [1][2].",
+      "citation_precision": 0.6666666666666666,
+      "semantic_answer_similarity": 0.4330871027048346
+    },
+    {
+      "id": "rel-15",
+      "category": "relevant",
+      "question": "When was the judgment for Customs Reference No.38 of 2009 decided?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": true,
+      "retrieved_record_ids": [
+        "PHC_2015_208",
+        "PHC_2015_377",
+        "PHC_2015_237",
+        "PHC_2020_187",
+        "PHC_2015_208"
+      ],
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.032,
+      "cited_record_ids": [
+        "PHC_2015_208"
+      ],
+      "generated_answer": "The provided excerpts do not contain the decision date for Customs Reference No.38 of 2009 [1]. The available information only discusses the case proceedings and related events, but does not provide a judgment date for the specific reference number. Therefore, it is not possible to answer the question based on the given excerpts.",
+      "citation_precision": 0.0,
+      "semantic_answer_similarity": 0.48383860680270374
+    },
+    {
+      "id": "irr-01",
+      "category": "irrelevant",
+      "question": "What is the best way to cook traditional Pakistani biryani?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": false,
+      "retrieved_record_ids": [
+        "PHC_2015_298",
+        "PHC_2020_8",
+        "PHC_2012_51",
+        "PHC_2015_36",
+        "PHC_2022_417"
+      ],
+      "recall_at_k": null,
+      "mrr": null,
+      "latency_seconds": 0.032,
+      "cited_record_ids": [
+        "PHC_2015_298",
+        "PHC_2020_8",
+        "PHC_2012_51",
+        "PHC_2015_36",
+        "PHC_2022_417"
+      ],
+      "generated_answer": "The provided source excerpts do not contain information about cooking traditional Pakistani biryani. The excerpts are related to court judgments and legal matters in Pakistan, but none of them discuss cooking or recipes [1][2][3][4][5]. Therefore, it is not possible to answer the question based on the given sources.",
+      "citation_precision": null,
+      "semantic_answer_similarity": null
+    },
+    {
+      "id": "irr-02",
+      "category": "irrelevant",
+      "question": "Can you give me a list of top-rated hospitals in Lahore?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": false,
+      "retrieved_record_ids": [
+        "PHC_2021_204",
+        "PHC_2017_503",
+        "PHC_2014_257",
+        "PHC_2018_205",
+        "PHC_2025_612"
+      ],
+      "recall_at_k": null,
+      "mrr": null,
+      "latency_seconds": 0.109,
+      "cited_record_ids": [
+        "PHC_2021_204",
+        "PHC_2017_503",
+        "PHC_2014_257",
+        "PHC_2018_205",
+        "PHC_2025_612"
+      ],
+      "generated_answer": "The provided source excerpts do not contain information about top-rated hospitals in Lahore. They appear to be related to court judgments and do not provide a list of hospitals or any information about their ratings [1][2][3][4][5].",
+      "citation_precision": null,
+      "semantic_answer_similarity": null
+    },
+    {
+      "id": "irr-03",
+      "category": "irrelevant",
+      "question": "Explain the concept of quantum entanglement.",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": false,
+      "retrieved_record_ids": [
+        "PHC_2012_37",
+        "PHC_2023_131",
+        "PHC_2022_73",
+        "PHC_2021_130",
+        "PHC_2019_152"
+      ],
+      "recall_at_k": null,
+      "mrr": null,
+      "latency_seconds": 0.109,
+      "cited_record_ids": [
+        "PHC_2012_37",
+        "PHC_2023_131",
+        "PHC_2022_73",
+        "PHC_2021_130",
+        "PHC_2019_152"
+      ],
+      "generated_answer": "The provided source excerpts do not contain any information about the concept of quantum entanglement. They appear to be related to legal judgments and discussions about the quantum of sentence in criminal cases [1][2][3][4][5]. Therefore, it is not possible to explain the concept of quantum entanglement based on the given excerpts.",
+      "citation_precision": null,
+      "semantic_answer_similarity": null
+    },
+    {
+      "id": "meta-01",
+      "category": "meta",
+      "question": "What documents are contained in your legal database?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": false,
+      "retrieved_record_ids": [
+        "PHC_2025_304",
+        "PHC_2015_221",
+        "PHC_2023_255",
+        "PHC_2017_368",
+        "PHC_2020_66"
+      ],
+      "recall_at_k": null,
+      "mrr": null,
+      "latency_seconds": 0.094,
+      "cited_record_ids": [
+        "PHC_2025_304",
+        "PHC_2015_221",
+        "PHC_2023_255",
+        "PHC_2017_368",
+        "PHC_2020_66"
+      ],
+      "generated_answer": "Based on the provided source excerpts, the documents contained in the legal database include:\n\n* Personal files of lawyers, which may be considered public documents or not, depending on the opinion [1]\n* Books of accounts maintained under tax laws, such as the Income Tax Ordinance, 2001 [2][3]\n* Records and documents related to tax affairs, including those kept on electronic data [2][3][4]\n* Documents produced during trials, such as deeds and proprietary rights [5]\n* Court records and judgments, including those from the Peshawar High Court [all excerpts]\n\nNote that the database may contain other types of documents as well, but these are the ones specifically mentioned in the provided excerpts.",
+      "citation_precision": null,
+      "semantic_answer_similarity": null
+    },
+    {
+      "id": "meta-02",
+      "category": "meta",
+      "question": "How does your retrieval system work?",
+      "predicted_label": "relevant",
+      "label_reasoning": "classification skipped",
+      "label_correct": false,
+      "retrieved_record_ids": [
+        "PHC_2025_250",
+        "PHC_2011_84",
+        "PHC_2025_233",
+        "PHC_2017_130",
+        "PHC_2023_393"
+      ],
+      "recall_at_k": null,
+      "mrr": null,
+      "latency_seconds": 0.062,
+      "cited_record_ids": [
+        "PHC_2025_250",
+        "PHC_2011_84",
+        "PHC_2025_233",
+        "PHC_2017_130",
+        "PHC_2023_393"
+      ],
+      "generated_answer": "My retrieval system doesn't work based on the provided source excerpts [1] through [5], as they appear to be court judgments from the Peshawar High Court and do not provide information on the retrieval system itself. The excerpts provided contain details about various court cases, including recovery of contraband, murder investigations, and trial proceedings [1][2][3][4][5]. Without additional information or context, I am unable to determine how the retrieval system works.",
+      "citation_precision": null,
+      "semantic_answer_similarity": null
+    }
+  ]
+}

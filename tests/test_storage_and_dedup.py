@@ -7,7 +7,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from phc_scraper.storage import JudgmentStore
-from phc_scraper.pdf_downloader import _resolve_dest_path
+from phc_scraper.processed_state import ProcessedState
+from phc_scraper.naming import safe_file_stem
 from phc_scraper import config
 
 
@@ -54,37 +55,44 @@ class TestStoreIdempotency(unittest.TestCase):
         self.assertEqual(len(quarantined), 1)
 
 
-class TestPdfFilenameCollision(unittest.TestCase):
+class TestBriefPipelineFilenameCollision(unittest.TestCase):
+    """Covers the brief-compliant pipeline's collision path (naming.py's
+    safe_file_stem + ProcessedState.owner_of_file_stem) - the mechanism
+    that replaced the old JudgmentStore/_resolve_dest_path pair below,
+    since the brief pipeline dedups via ProcessedState, not JudgmentStore."""
+
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
-        self.store_path = os.path.join(self.tmpdir, "judgments.json")
-        self.store = JudgmentStore(path=self.store_path)
+        self.state_path = os.path.join(self.tmpdir, "processed_ids.json")
+        self.state = ProcessedState(path=self.state_path)
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def test_same_record_reuses_its_own_path(self):
-        rec = _record("PHC_2025_1")
-        rec["judgment_local_pdf_path"] = os.path.relpath(
-            os.path.join(config.PDF_DIR, "foo.pdf"), config.PROJECT_ROOT)
-        self.store.upsert(rec)
+    def test_no_collision_returns_plain_stem(self):
+        stem = safe_file_stem(
+            "https://example.com/judgments/foo.pdf", "sid-aaa111", self.state)
+        self.assertEqual(stem, "Peshawar High Court - foo")
 
-        rel_path, _ = _resolve_dest_path(
-            config.PDF_DIR, "https://example.com/judgments/foo.pdf",
-            "PHC_2025_1", self.store)
-        self.assertTrue(rel_path.endswith("foo.pdf"))
-        self.assertNotIn("__", os.path.basename(rel_path))
+    def test_same_judgment_reprocessed_reuses_its_own_stem(self):
+        """A judgment re-running on a later scrape (same stable_id) is
+        NOT a collision, even though it already 'owns' that stem."""
+        self.state.mark_complete("sid-aaa111", "Peshawar High Court - foo", None)
+        stem = safe_file_stem(
+            "https://example.com/judgments/foo.pdf", "sid-aaa111", self.state)
+        self.assertEqual(stem, "Peshawar High Court - foo")
 
-    def test_different_record_same_filename_gets_disambiguated(self):
-        rec = _record("PHC_2025_1")
-        rec["judgment_local_pdf_path"] = os.path.relpath(
-            os.path.join(config.PDF_DIR, "foo.pdf"), config.PROJECT_ROOT)
-        self.store.upsert(rec)
+    def test_different_judgment_same_basename_gets_disambiguated(self):
+        """Two DIFFERENT cases whose PDF URLs share a basename must not
+        collide on disk - the second one gets a distinct stem."""
+        self.state.mark_complete("sid-aaa111", "Peshawar High Court - foo", None)
+        stem = safe_file_stem(
+            "https://example.com/judgments/foo.pdf", "sid-bbb222", self.state)
+        self.assertNotEqual(stem, "Peshawar High Court - foo")
+        self.assertIn("sid-bbb2", stem)  # short stable-id suffix present
 
-        rel_path, _ = _resolve_dest_path(
-            config.PDF_DIR, "https://example.com/judgments/foo.pdf",
-            "PHC_2025_2", self.store)
-        self.assertIn("PHC_2025_2__foo.pdf", rel_path)
+    def test_owner_lookup_returns_none_when_unclaimed(self):
+        self.assertIsNone(self.state.owner_of_file_stem("nobody has this stem"))
 
 
 if __name__ == "__main__":

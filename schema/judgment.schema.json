@@ -1,78 +1,246 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/AreebaAhmad123/phc-judgments-scraper/schema/judgment.schema.json",
-  "title": "PHC Reported Judgment",
-  "description": "One row from the Peshawar High Court reported-judgments search results, normalized.",
+  "title": "External Judgment Metadata",
+  "description": "One record per judgment, brief Section 4 field set. Field order in metadata_builder.METADATA_KEYS is the canonical source of truth for the JSON key order written to disk; this schema is the canonical source of truth for types and nullability.",
   "type": "object",
   "required": [
-    "schema_version", "id", "serial_no", "year", "case_info", "remarks",
-    "content_hash", "first_seen_at", "last_seen_at", "updated_at"
+    "Case Number",
+    "Case Title",
+    "Court Name",
+    "content",
+    "courtType",
+    "fileName",
+    "reference_url",
+    "source_file",
+    "source_url"
   ],
   "properties": {
-    "schema_version": { "type": "integer", "const": 2 },
-    "id": {
-      "type": "string",
-      "description": "Stable synthetic key: PHC_{year}_{serial_no}. Primary dedup key.",
-      "pattern": "^PHC_\\d{4}_\\d+$"
+    "source_file": {
+      "type": "string"
     },
-    "serial_no": { "type": "integer", "minimum": 1 },
-    "year": { "type": "integer", "minimum": 2010 },
-    "case_info": { "type": "string", "description": "Case number and party names, as shown on the site." },
-    "remarks": { "type": "string", "description": "Headnote / summary text. Can be long." },
-    "other_citation": { "type": ["string", "null"] },
-    "neutral_citation": { "type": ["string", "null"] },
-    "decision_date": {
-      "type": ["string", "null"],
-      "description": "ISO 8601 date (YYYY-MM-DD). Null if the site shows 'awaited' or an unparseable value.",
-      "format": "date"
+    "fileName": {
+      "type": "string"
     },
-    "sc_status": {
-      "type": ["string", "null"],
-      "description": "Free-text Supreme Court appeal status, e.g. 'Upheld', 'Partly allowed'. Null if the case wasn't appealed to the SC."
+    "Page count": {
+      "type": [
+        "null"
+      ]
     },
-    "category": { "type": ["string", "null"] },
-
-    "judgment_pdf_url": {
-      "type": ["string", "null"],
-      "format": "uri",
-      "description": "Remote URL of the PHC's own judgment PDF."
+    "Court Name": {
+      "type": "string"
     },
-    "judgment_local_pdf_path": {
-      "type": ["string", "null"],
-      "description": "Path to the downloaded PHC judgment PDF, relative to the repo root, e.g. 'downloaded_pdfs/foo.pdf'."
+    "courtType": {
+      "type": "string"
     },
-    "judgment_pdf_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-
-    "sc_judgment_pdf_url": {
-      "type": ["string", "null"],
-      "format": "uri",
-      "description": "Remote URL of the Supreme Court's judgment PDF on this case's further appeal, if one exists. Null for the majority of cases that were never appealed further."
+    "Case Title": {
+      "type": "string"
     },
-    "sc_judgment_local_pdf_path": {
-      "type": ["string", "null"],
-      "description": "Path to the downloaded SC judgment PDF, relative to the repo root, e.g. 'downloaded_pdfs/sc_judgments/foo.pdf'. Stored in a separate subfolder from the PHC judgment so the two can never collide on filename."
+    "Case Number": {
+      "type": "string"
     },
-    "sc_judgment_pdf_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-
-     "judgment_gdrive_view_url": {
-      "type": ["string", "null"],
-      "format": "uri",
-      "description": "Public, view-only Google Drive link for the downloaded PHC judgment PDF."
+    "Type of Petition or Application": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "sc_judgment_gdrive_view_url": {
-      "type": ["string", "null"],
-      "format": "uri",
-      "description": "Public, view-only Google Drive link for the downloaded SC judgment PDF, if one exists."
+    "case_category": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
-
-    "content_hash": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$",
-      "description": "sha256 over the site-sourced fields only. Same hash next run = no-op; different hash = the site changed this record and it was updated in place."
+    "disposition_type": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "first_seen_at": { "type": "string", "format": "date-time" },
-    "last_seen_at": { "type": "string", "format": "date-time" },
-    "updated_at": { "type": "string", "format": "date-time" }
+    "bench_strength": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "citation_year": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "citation_journal": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "citation_page_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "case_filing_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "trial_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "appellate_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "high_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "supreme_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "Hearing Date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "Decision/Order Date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "petitioner_appellant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "respondent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Applicant and Respondents": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Advocate Names for each party": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Judge Name(s)": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "FIR Number and Date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Legal Sections Involved": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "articles_sections_cited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "statutes_mentioned": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "key_legal_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "head_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Cited Case Laws": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "precedents_cited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Short Summary of the Case": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "legal_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "final_decision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reference_url": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

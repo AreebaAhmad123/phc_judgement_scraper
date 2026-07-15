@@ -9,10 +9,13 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from urllib.parse import urlparse
-# TARGET SITE
-BASE_URL = "https://www.peshawarhighcourt.gov.pk/PHCCMS/"
-SEARCH_PAGE_URL = BASE_URL + "reportedJudgments.php"
-SEARCH_ACTION_URL = BASE_URL + "reportedJudgments.php?action=search"
+
+from .courts import get_court
+_court = get_court()
+
+BASE_URL = _court.base_url
+SEARCH_PAGE_URL = _court.search_page_url
+SEARCH_ACTION_URL = _court.search_action_url
 
 # Years to crawl. The site's own dropdown lists 2010-2026 plus "All Years".
 # We crawl year-by-year rather than "All Years" so one bad year can't sink
@@ -28,10 +31,14 @@ RESULTS_PER_PAGE = 25  # DataTables pageLength the site's own JS uses
 # browser-like header set to get past a WAF/session guard, flip this - but
 # throttling and robots.txt compliance below apply either way; only the
 # identification string changes.
-IDENTIFY_AS_BROWSER = True
-
-CONTACT_EMAIL = "REPLACE_WITH_YOUR_EMAIL@example.com"
-REPO_URL = "https://github.com/REPLACE_WITH_YOUR_ORG/phc-judgments-scraper"
+IDENTIFY_AS_BROWSER = os.environ.get("IDENTIFY_AS_BROWSER", "true").lower() == "true"
+# TODO: replace with the real contact address before running this
+# against the live site - this placeholder must not ship in the honest
+# User-Agent string (see IDENTIFY_AS_BROWSER above).
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "REPLACE_WITH_YOUR_EMAIL@example.com")
+REPO_URL = os.environ.get(
+    "REPO_URL", "https://github.com/AreebaAhmad123/phc_judgement_scraper"
+)
 
 BOT_USER_AGENT = (
     f"PHCJudgmentsResearchBot/1.0 (+{REPO_URL}; contact: {CONTACT_EMAIL})"
@@ -46,7 +53,7 @@ BROWSER_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    "Origin": "https://www.peshawarhighcourt.gov.pk",
+    "Origin": _court.source_website,
     "Sec-Fetch-Site": "same-origin",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Dest": "document",
@@ -78,12 +85,19 @@ PDF_STREAM_BACKOFF_BASE = 3.0  # seconds; doubles each attempt
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-PDF_DIR = os.path.join(PROJECT_ROOT, "downloaded_pdfs")
+
+PDF_DIR = os.path.join(PROJECT_ROOT, "pdfs")
 SC_PDF_DIR = os.path.join(PDF_DIR, "sc_judgments")
 LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 DEBUG_DIR = os.path.join(PROJECT_ROOT, "debug_responses")
 STATE_DB_PATH = os.path.join(DATA_DIR, "judgments.json")
+
+PROCESSED_STATE_PATH = os.path.join(DATA_DIR, "processed_ids.json")
+
 RUN_LOCK_PATH = os.path.join(DATA_DIR, ".scrape.lock")
+
+METADATA_DIR = os.path.join(PROJECT_ROOT, "metadata")
+
 
 #stage 2 
 
@@ -109,6 +123,21 @@ CHUNK_OVERLAP_WORDS = 60
 MARKDOWN_DIR = os.path.join(PROJECT_ROOT, "markdown")
 INGESTION_STATE_PATH = os.path.join(DATA_DIR, "ingestion_state.json")
 
+# --- AWS S3 ---
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+# --- External Judgment API ---
+EXTERNAL_JUDGMENT_API_BASE_URL = os.environ.get(
+    "EXTERNAL_JUDGMENT_API_BASE_URL", "https://chat.pakistanlawbot.com"
+)
+EXTERNAL_JUDGMENT_API_KEY = os.environ.get("EXTERNAL_JUDGMENT_API_KEY")
+# Brief quality gate
+MIN_CHARS_PER_PAGE = int(os.environ.get("MIN_CHARS_PER_PAGE", "300"))
+MIN_PDF_BYTES = int(os.environ.get("MIN_PDF_BYTES", "1024"))
+
+
 GOOGLE_OAUTH_CLIENT_SECRET_FILE = os.environ.get(
     "GOOGLE_OAUTH_CLIENT_SECRET_FILE", os.path.join(PROJECT_ROOT, "client_secret.json"))
 GOOGLE_OAUTH_TOKEN_FILE = os.environ.get(
@@ -120,9 +149,51 @@ OCR_ENABLED = os.environ.get("OCR_ENABLED", "true").lower() == "true"
 OCR_LANGUAGE = os.environ.get("OCR_LANGUAGE", "eng")
 OCR_DPI = int(os.environ.get("OCR_DPI", 300))
 
-for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR):
-    os.makedirs(_dir, exist_ok=True)
+QUERY_CLASSIFIER_MODEL = os.environ.get("QUERY_CLASSIFIER_MODEL", "llama-3.1-8b-instant")
+RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+# --- API service: auth, rate limiting, CORS ---
+# REQUIRE_API_KEY defaults to True. Set to "false" only for local dev
+# against a service with no public exposure - never in a deployed
+# environment. When required, every request to /chat and /ingest/*
+# must carry a matching X-API-Key header (see api/auth.py).
+REQUIRE_API_KEY = os.environ.get("REQUIRE_API_KEY", "true").lower() == "true"
+API_KEY = os.environ.get("API_KEY")
+
+# Requests per minute, per client IP, enforced on /chat and /ingest/run -
+# both endpoints trigger paid/rate-limited calls downstream (Groq,
+# embeddings, Weaviate, S3), so an unauthenticated-looking flood (even
+# from a holder of a valid key) shouldn't be able to run the account's
+# quota to zero. Two separate limits since /ingest/run is far more
+# expensive per call than /chat and should be throttled harder.
+CHAT_RATE_LIMIT = os.environ.get("CHAT_RATE_LIMIT", "30/minute")
+INGEST_RATE_LIMIT = os.environ.get("INGEST_RATE_LIMIT", "2/minute")
+
+# Comma-separated list of allowed origins for browser-based clients
+# (e.g. a chat UI served from a different host). Empty = no cross-origin
+# access at all, which is the safe default for a service with no
+# frontend of its own yet.
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+
+# --- Brief Section 4: LLM-based metadata field extraction ---
+# Same Groq account/key as llm.py and query_classifier.py - one provider,
+# one key to manage. A larger/smarter model than the query classifier's
+# 8B model, since this does real legal-document extraction (case
+# category, disposition, cited law, summaries) rather than a 3-way label.
+METADATA_LLM_MODEL = os.environ.get("METADATA_LLM_MODEL", "llama-3.3-70b-versatile")
+# Cap on how much of a judgment's markdown text is sent per extraction
+# call. Most PHC judgments are well under this; a handful of very long
+# ones would otherwise burn a disproportionate number of tokens for
+# marginal extra recall (the operative order and legal reasoning that
+# matter most for these fields are almost always in the first and last
+# portions of the document, which this cap keeps in full).
+METADATA_LLM_MAX_CHARS = int(os.environ.get("METADATA_LLM_MAX_CHARS", "20000"))
+METADATA_LLM_MIN_DELAY_SECONDS = float(os.environ.get("METADATA_LLM_MIN_DELAY_SECONDS", "3"))
+
+for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR, METADATA_DIR):
+    os.makedirs(_dir, exist_ok=True)
 SCHEMA_VERSION = 2
 
 

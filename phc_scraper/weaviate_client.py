@@ -14,6 +14,8 @@ exists at all (see ingest.py's shrinkage handling).
 """
 
 #an open-source, cloud-native vector database purpose-built to scale artificial intelligence and semantic search applications
+from logging import Filter
+
 import weaviate
 
 import weaviate.classes as wvc
@@ -105,3 +107,12 @@ def delete_chunk_indices_from(record_id, chunk_type, from_index):
             & wvc.query.Filter.by_property("chunk_index").greater_or_equal(from_index)
         )
     )
+
+def delete_chunks_for_record(record_id: str) -> int:
+    """Deletes all chunks for a record_id. Returns count deleted."""
+    client = get_client()
+    collection = client.collections.get("PHCJudgmentChunk")
+    result = collection.data.delete_many(
+        where=wvc.query.Filter.by_property("record_id").equal(record_id)
+    )
+    return result.successful
