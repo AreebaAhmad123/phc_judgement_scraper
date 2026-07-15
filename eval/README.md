@@ -60,3 +60,8 @@ Some outcomes to genuinely expect, not just accept if they happen:
   and a high score doesn't guarantee a correct one. Spot-check a few
   `generated_answer` fields against their `reference_answer` by eye
   before trusting the aggregate number in a report.
+
+
+python -m eval.run_eval --config rerank --retrieval-only
+python -m eval.run_eval --config hybrid --retrieval-only
+python -m eval.run_eval --config hybrid_rerank --retrieval-only

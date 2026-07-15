@@ -622,37 +622,6 @@ python -m phc_scraper.ingest
 python scripts/reconcile_counts.py   # should now show 0 missing
 ```
 
-## Issue 2: 5,756 records vs the site's "5,771 entries"
-
-Don't guess at this - `check_year_totals.py` settles it with real data by
-comparing, per year, the site's own reported total against how many rows
-your scraper actually parsed for that year:
-
-```bash
-python scripts/check_year_totals.py
-```
-
-This takes a few minutes (it makes real, throttled requests to the live
-site, same politeness rules as the scraper itself). Two possible
-outcomes:
-
-- **Every year matches**: the 5,771 you saw in the screenshot was almost
-  certainly the site's "All Years" dropdown total - a different,
-  unfiltered query - not something directly comparable to a sum of
-  individual per-year crawls. Worth confirming by manually selecting
-  each year in the site's own UI and summing those totals by hand.
-- **One or more years are short**: that confirms a real per-year
-  pagination/capture gap (a risk `scraper.py` already logs a warning
-  for, but which nothing has forced you to actually go check until now).
-  Report which years back and I'll build a real pagination loop into
-  `fetch_year_html`/`scrape_year` targeted at the confirmed years,
-  instead of guessing at DataTables parameter names blind.
-
-Please run this and share the output before I build a pagination fix -
-implementing one against an unconfirmed hypothesis risks solving the
-wrong problem, the same way the last few rounds of narrow, confirmed
-fixes actually worked.
-
 
 
 

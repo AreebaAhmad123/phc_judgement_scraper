@@ -51,6 +51,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from phc_scraper.llm import generate_grounded_answer  # noqa: E402
 from phc_scraper.query_classifier import classify_query  # noqa: E402
 from phc_scraper.retrieval import RetrievalConfig, retrieve  # noqa: E402
+from phc_scraper.weaviate_client import get_client, close_client
 
 from eval.metrics import (  # noqa: E402
     citation_precision, mean_reciprocal_rank, recall_at_k, semantic_answer_similarity,
@@ -151,7 +152,12 @@ def _mean(values):
 
 def run_config(config_name, eval_entries, retrieval_only=False):
     config_flags = CONFIGS[config_name]
-    per_entry = [run_one(entry, config_flags, retrieval_only=retrieval_only) for entry in eval_entries]
+    per_entry = []
+    total_entries = len(eval_entries)
+    print(f"\n=== Running config {config_name} ({total_entries} entries) ===")
+    for idx, entry in enumerate(eval_entries, start=1):
+        print(f"[{idx}/{total_entries}] Evaluating entry {entry.get('id')!r}...")
+        per_entry.append(run_one(entry, config_flags, retrieval_only=retrieval_only))
 
     labeled_entries = [r for r in per_entry if r["label_correct"] is not None]
     classification_ran = not retrieval_only and not config_flags["skip_classification"]
@@ -213,11 +219,15 @@ def main():
              "replace every entry with real Q/A pairs before reporting "
              "these numbers anywhere. See eval/README.md.\n", file=sys.stderr)
 
-    if args.config == "all":
-        for name in CONFIGS:
-            run_config(name, eval_entries, retrieval_only=args.retrieval_only)
-    else:
-        run_config(args.config, eval_entries, retrieval_only=args.retrieval_only)
+    try:
+        if args.config == "all":
+            for name in CONFIGS:
+                run_config(name, eval_entries, retrieval_only=args.retrieval_only)
+        else:
+            run_config(args.config, eval_entries, retrieval_only=args.retrieval_only)
+    finally:
+        close_client()
+        print("Weaviate connection closed cleanly.")
 
 
 if __name__ == "__main__":

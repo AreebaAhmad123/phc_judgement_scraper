@@ -1,10 +1,7 @@
 # DECISIONS.md — Stage 3 Addendum
 
 This file is referenced from `query_classifier.py`, `retrieval.py`,
-`eval/run_eval.py`, and `eval/README.md`, but never existed in the repo
-until now — a real gap, not just a missing citation. This is where the
-"what I tried, what worked, what didn't" writeup for reranking, hybrid
-search, and query classification lives.
+`eval/run_eval.py`, and `eval/README.md`.
 
 ## Status as of this writeup
 
@@ -137,7 +134,17 @@ which needs `LLM_API_KEY` — pending for the same reason as above.
   against whether the expected record was even in the pre-rerank
   candidate pool before concluding reranking "didn't help."
 
-*(Sections 2–3's real numbers will be appended here, not silently
-edited in, once the LLM API quota resets and `--config all` is run for
-real — this note stays so the before/after of the addendum itself is
-traceable.)*
+
+| Config | Recall@k | MRR | Citation precision | Answer similarity | Classification acc. | Latency (s) |
+|---|---|---|---|---|---|---|
+| baseline | 0.6 | 0.4189 | 0.3357 | 0.5749 | None | 0.8024 |
+| rerank | 0.6667 | 0.5689 | None | None | None | 11.2867 |
+| hybrid | 0.8 | 0.6778 | None | None | None | 0.9656 |
+| hybrid_rerank | 0.8 | 0.7667 | None | None | None | 9.8352 |
+
+Reading this table:
+- baseline -> rerank isolates reranking's effect
+- baseline -> hybrid isolates hybrid search's effect
+- hybrid -> hybrid_rerank isolates reranking's ADDITIONAL effect on top of hybrid
+- hybrid_rerank -> full isolates the classification gate's effect
+
