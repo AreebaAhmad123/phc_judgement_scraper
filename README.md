@@ -21,10 +21,12 @@ Two things live in this repo, sharing the same scrape/parse layer:
    `python -m phc_scraper.ingest` - see "Running it" below.
 
 See **DECISIONS.md** for the reasoning behind every non-obvious choice
-in the Stage 1/2/3 flow (schema, chunking, incremental ingestion, dedup,
-etiquette), **DECISIONS_STAGE3_ADDENDUM.md** for reranking/hybrid/
-classification, and **CHANGES.md** for the history of bugs found and
-fixed while building this against the real, messy site.
+in this repo: the Stage 1/2/3 schema, chunking, incremental ingestion,
+dedup, and etiquette decisions, plus the Stage 3 addendum (reranking,
+hybrid search, query classification) and the Stage 4 addendum (keyword/
+semantic/hybrid retrieval, citation-token normalization, the
+tool-calling chat CLI, and evaluation) as later sections of the same
+file.
 
 ## Layout
 
@@ -133,7 +135,7 @@ docker compose -f docker-compose.weaviate.yml up -d
 
 ### LLM
 
-Uses [Groq](https://console.groq.com) (free tier, OpenAI-compatible) for
+Uses [Groq]/gemini(https://console.groq.com) (free tier, OpenAI-compatible) for
 the grounded-answer generation step - set `LLM_API_KEY` in `.env`.
 Embeddings are a local `sentence-transformers` model (no API key needed)
 since that's the highest-volume call in the pipeline; see `embeddings.py`
@@ -255,4 +257,6 @@ submission. After a real run against the live site:
 git add -f pdfs/<5 real files> markdown/<5 real files> metadata/<5 real files>
 ```
 
-See `SUBMISSION_NOTES.md` for the 1-page summary of design decisions.
+See `DECISIONS.md`'s "Hardening: real bugs found running this against
+the live site at scale" section for the site-quirks / unusual-edge-cases
+writeup the Stage 1 brief's "Brief notes" requirement asks for.

@@ -2,7 +2,7 @@
 upsert into the store. Designed so a bad year, a bad row, or a bad PDF
 never sinks the rest of the run."""
 import os
-# for system time realated functions
+# for system time related functions
 import time
 
 from . import config

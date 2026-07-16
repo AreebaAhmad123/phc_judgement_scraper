@@ -21,9 +21,9 @@ import json
 import re
 import time
 
-from groq import Groq, RateLimitError
-
+from openai import RateLimitError  # type: ignore[import]
 from . import config
+from . import llm_client
 from .logging_setup import logger
 
 _last_call_ts = 0.0
@@ -166,7 +166,7 @@ def _coerce(parsed: dict) -> dict:
 
 def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
     """Returns a dict with exactly the keys in _ALL_FIELDS. Never raises -
-    a Groq/network/parsing failure logs a warning and returns the same
+    an llm/network/parsing failure logs a warning and returns the same
     all-null/all-empty shape metadata_builder.py already defaults to, so
     a flaky LLM call degrades to "these fields stay null this run"
     (retried automatically next run, since these fields aren't part of
@@ -176,7 +176,10 @@ def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
         logger.warning("No markdown text to extract metadata from (case_info=%r)", case_info)
         return _empty_result()
 
-    client = Groq(api_key=config.LLM_API_KEY)
+    if not config.LLM_API_KEY:
+        logger.warning("LLM_API_KEY is not configured; skipping metadata extraction")
+        return _empty_result()
+
     document = _truncate(markdown_text)
     user_message = (
         f"Case listing info (for context only, may be incomplete): {case_info}\n\n"
@@ -186,17 +189,13 @@ def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
     for attempt in range(1, _MAX_RATE_LIMIT_RETRIES + 1):
         _pace()
         try:
-            response = client.chat.completions.create(
+            raw_text = llm_client.chat_completion(
                 model=config.METADATA_LLM_MODEL,
+                system_prompt=_SYSTEM_PROMPT,
+                user_message=user_message,
                 max_tokens=1500,
                 temperature=0,
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
-                ],
             )
-
-            raw_text = response.choices[0].message.content
             parsed = json.loads(_strip_code_fences(raw_text))
             if not isinstance(parsed, dict):
                 logger.warning(

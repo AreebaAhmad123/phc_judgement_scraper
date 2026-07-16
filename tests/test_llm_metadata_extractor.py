@@ -1,20 +1,10 @@
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from phc_scraper.llm_metadata_extractor import extract_llm_metadata, _ALL_FIELDS  # noqa: E402
-
-
-def _mock_response(json_text):
-    message = MagicMock()
-    message.content = json_text
-    choice = MagicMock()
-    choice.message = message
-    response = MagicMock()
-    response.choices = [choice]
-    return response
 
 
 _GOOD_JSON = """{
@@ -38,11 +28,9 @@ _GOOD_JSON = """{
 }"""
 
 
-@patch("phc_scraper.llm_metadata_extractor.Groq")
-def test_extract_happy_path(mock_groq_cls):
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _mock_response(_GOOD_JSON)
-    mock_groq_cls.return_value = mock_client
+@patch("phc_scraper.llm_metadata_extractor.llm_client.chat_completion")
+def test_extract_happy_path(mock_chat_completion):
+    mock_chat_completion.return_value = _GOOD_JSON
 
     result = extract_llm_metadata("Some judgment text " * 50, "W.P. 123/2025 X Vs Y")
 
@@ -53,22 +41,17 @@ def test_extract_happy_path(mock_groq_cls):
     assert result["FIR Number and Date"] is None
 
 
-@patch("phc_scraper.llm_metadata_extractor.Groq")
-def test_extract_handles_markdown_fences(mock_groq_cls):
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _mock_response(
-        "```json\n" + _GOOD_JSON + "\n```")
-    mock_groq_cls.return_value = mock_client
+@patch("phc_scraper.llm_metadata_extractor.llm_client.chat_completion")
+def test_extract_handles_markdown_fences(mock_chat_completion):
+    mock_chat_completion.return_value = "```json\n" + _GOOD_JSON + "\n```"
 
     result = extract_llm_metadata("Some judgment text", "case info")
     assert result["disposition_type"] == "Petition allowed"
 
 
-@patch("phc_scraper.llm_metadata_extractor.Groq")
-def test_extract_fails_open_on_malformed_json(mock_groq_cls):
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _mock_response("not json at all")
-    mock_groq_cls.return_value = mock_client
+@patch("phc_scraper.llm_metadata_extractor.llm_client.chat_completion")
+def test_extract_fails_open_on_malformed_json(mock_chat_completion):
+    mock_chat_completion.return_value = "not json at all"
 
     result = extract_llm_metadata("Some judgment text", "case info")
     assert result["Judge Name(s)"] is None
@@ -76,25 +59,21 @@ def test_extract_fails_open_on_malformed_json(mock_groq_cls):
     assert set(result.keys()) == set(_ALL_FIELDS)
 
 
-@patch("phc_scraper.llm_metadata_extractor.Groq")
-def test_extract_fails_open_on_api_error(mock_groq_cls):
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.side_effect = RuntimeError("connection reset")
-    mock_groq_cls.return_value = mock_client
+@patch("phc_scraper.llm_metadata_extractor.llm_client.chat_completion")
+def test_extract_fails_open_on_api_error(mock_chat_completion):
+    mock_chat_completion.side_effect = RuntimeError("connection reset")
 
     result = extract_llm_metadata("Some judgment text", "case info")
     assert result["case_category"] is None
     assert result["legal_keywords"] == []
 
 
-@patch("phc_scraper.llm_metadata_extractor.Groq")
-def test_extract_ignores_wrong_typed_fields(mock_groq_cls):
+@patch("phc_scraper.llm_metadata_extractor.llm_client.chat_completion")
+def test_extract_ignores_wrong_typed_fields(mock_chat_completion):
     """A response where one field has the wrong type shouldn't invalidate
     the other, correctly-typed fields."""
     bad = _GOOD_JSON.replace('"bench_strength": 1,', '"bench_strength": "three",')
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = _mock_response(bad)
-    mock_groq_cls.return_value = mock_client
+    mock_chat_completion.return_value = bad
 
     result = extract_llm_metadata("Some judgment text", "case info")
     assert result["bench_strength"] is None  # "three" isn't coercible, stays default

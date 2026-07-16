@@ -48,9 +48,8 @@ measured against the eval set):
 """
 import json
 
-from groq import Groq
-
 from . import config
+from . import llm_client
 from .logging_setup import logger
 
 _SYSTEM_PROMPT = """You classify questions for a legal-research assistant \
@@ -86,16 +85,17 @@ def classify_query(question):
     OpenAI-compatible chat.completions.create shape) rather than a
     separate provider - one fewer API key to manage, and consistent with
     the free/low-cost-LLM choice made for generation."""
-    client = Groq(api_key=config.LLM_API_KEY)
+    if not config.LLM_API_KEY:
+        logger.warning("LLM_API_KEY is not configured; defaulting to relevant")
+        return {"label": "relevant", "reasoning": "LLM_API_KEY not configured"}
+
     try:
-        response = client.chat.completions.create(
-            model=config.QUERY_CLASSIFIER_MODEL, max_tokens=150,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": question},
-            ],
-        )
-        text = response.choices[0].message.content.strip()
+        text = llm_client.chat_completion(
+            model=config.QUERY_CLASSIFIER_MODEL,
+            system_prompt=_SYSTEM_PROMPT,
+            user_message=question,
+            max_tokens=150,
+        ).strip()
         parsed = json.loads(text)
         if parsed.get("label") not in ("relevant", "irrelevant", "meta"):
             raise ValueError(f"Unexpected label: {parsed.get('label')!r}")

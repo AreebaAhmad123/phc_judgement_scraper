@@ -2,14 +2,6 @@
 
 OAuth (as you, not a service account)
 --------------------------------------
-Service accounts have zero Drive storage quota of their own, which is
-what caused the 403 "storage quota exceeded" error - the standard fix is
-either a Shared Drive (Workspace-only, not available on a personal
-account) or sharing a personal folder with the service account as Editor
-(so uploads count against your quota instead of the SA's). Since neither
-is convenient here, this version authenticates as you directly via OAuth
-instead: uploads land straight in your own Drive, using your own 15GB
-quota, no folder-sharing required.
 
 One-time setup (do this once, interactively, before running ingestion):
     python gdrive_oauth_setup.py

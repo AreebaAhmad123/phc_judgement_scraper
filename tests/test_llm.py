@@ -1,6 +1,6 @@
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,27 +19,18 @@ class TestGenerateGroundedAnswer:
         result = generate_grounded_answer("any question", [])
         assert "don't have any ingested source material" in result
 
-    @patch("phc_scraper.llm.Groq")
-    def test_calls_chat_completions_not_messages(self, mock_groq_cls):
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Grounded answer [1]"))]
-        mock_client.chat.completions.create.return_value = mock_response
-        mock_groq_cls.return_value = mock_client
+    @patch("phc_scraper.llm.llm_client.chat_completion")
+    def test_calls_chat_completions_not_messages(self, mock_chat_completion):
+        mock_chat_completion.return_value = "Grounded answer [1]"
 
         chunks = [{"record_id": "PHC_2025_1", "chunk_type": "metadata", "text": "Case details."}]
         result = generate_grounded_answer("What happened in this case?", chunks)
 
         assert result == "Grounded answer [1]"
-        # The whole point of this test: it must be chat.completions.create
-        # (OpenAI/Groq shape), never .messages.create (Anthropic shape).
-        mock_client.chat.completions.create.assert_called_once()
-        assert not hasattr(mock_client, "messages") or not mock_client.messages.create.called
-
-        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-        assert "messages" in call_kwargs
-        assert call_kwargs["messages"][0]["role"] == "system"
-        assert call_kwargs["messages"][1]["role"] == "user"
+        mock_chat_completion.assert_called_once()
+        call_kwargs = mock_chat_completion.call_args.kwargs
+        assert call_kwargs["system_prompt"]
+        assert "What happened" in call_kwargs["user_message"]
 
 
 if __name__ == "__main__":

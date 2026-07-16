@@ -19,11 +19,17 @@ def test_retrieval_only_skips_llm_calls():
         "id": "t1", "category": "relevant", "question": "What did the court decide?",
         "expected_record_ids": ["PHC_2020_1"],
     }
-    config_flags = {"use_hybrid": True, "use_rerank": True, "skip_classification": False}
+    config_flags = {"strategy": "keyword", "use_rerank": False, "skip_classification": False}
+
+    fake_strategy_funcs = {
+        "keyword": lambda question, limit: _fake_retrieve(question, None),
+        "semantic": lambda question, limit: _fake_retrieve(question, None),
+        "hybrid": lambda question, limit: _fake_retrieve(question, None),
+    }
 
     with patch("eval.run_eval.classify_query") as mock_classify, \
          patch("eval.run_eval.generate_grounded_answer") as mock_generate, \
-         patch("eval.run_eval.retrieve", side_effect=_fake_retrieve):
+         patch("eval.run_eval._STRATEGY_FUNCS", fake_strategy_funcs):
         result = run_one(entry, config_flags, retrieval_only=True)
 
     mock_classify.assert_not_called()
@@ -43,9 +49,15 @@ def test_retrieval_only_writes_separate_results_file(tmp_path, monkeypatch):
         "expected_record_ids": ["PHC_2020_1"],
     }]
 
+    fake_strategy_funcs = {
+        "keyword": lambda question, limit: _fake_retrieve(question, None),
+        "semantic": lambda question, limit: _fake_retrieve(question, None),
+        "hybrid": lambda question, limit: _fake_retrieve(question, None),
+    }
+
     with patch("eval.run_eval.classify_query") as mock_classify, \
          patch("eval.run_eval.generate_grounded_answer") as mock_generate, \
-         patch("eval.run_eval.retrieve", side_effect=_fake_retrieve):
+         patch("eval.run_eval._STRATEGY_FUNCS", fake_strategy_funcs):
         run_config("baseline", entries, retrieval_only=True)
 
     mock_classify.assert_not_called()

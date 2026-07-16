@@ -7,7 +7,12 @@ one place and tests can monkeypatch a single spot.
 """
 import os
 from dotenv import load_dotenv
-load_dotenv()
+# override=True: a value you edit in .env should win over a stale
+# shell-level env var left over from earlier testing (e.g. an old
+# LLM_API_KEY set via `setx` or `$env:` in a previous session) -
+# without this, load_dotenv() silently keeps the shell's value and
+# .env edits appear to have no effect.
+load_dotenv(override=True)
 from urllib.parse import urlparse
 
 from .courts import get_court
@@ -112,7 +117,41 @@ WEAVIATE_GRPC_PORT = int(os.environ.get("WEAVIATE_GRPC_PORT", 50051))
 WEAVIATE_COLLECTION = "PHCJudgmentChunk"
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY")
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-2.5-flash")
+
+def _looks_like_gemini_key(value: str | None) -> bool:
+    if not value:
+        return False
+    value = value.strip()
+    # "AIza"/"AIzaSy" = legacy Standard key format.
+    # "AQ." = the newer AI Studio "Auth key" format Google has been
+    # issuing since mid-2026 in place of AIza keys - see
+    # https://discuss.ai.google.dev/t/gemini-api-key-start-from-aq/171575
+    return (
+        value.startswith("AIza")
+        or value.startswith("AIzaSy")
+        or value.startswith("gemini-")
+        or value.startswith("AQ.")
+    )
+
+_is_gemini_key = _looks_like_gemini_key(LLM_API_KEY)
+_env_provider = (os.environ.get("LLM_PROVIDER") or "").strip().lower()
+if _env_provider in {"gemini", "openai", "groq"}:
+    LLM_PROVIDER = _env_provider
+elif _is_gemini_key:
+    LLM_PROVIDER = "gemini"
+else:
+    LLM_PROVIDER = "openai"
+
+_LLM_BASE_URL_DEFAULTS = {
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    "groq": "https://api.groq.com/openai/v1",
+    # "openai" intentionally has no default - None lets the openai SDK
+    # use its own real default (api.openai.com).
+}
+LLM_BASE_URL = os.environ.get(
+    "LLM_BASE_URL", _LLM_BASE_URL_DEFAULTS.get(LLM_PROVIDER),
+)
 
 EMBEDDING_MODEL_NAME = os.environ.get(
     "EMBEDDING_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
@@ -195,6 +234,3 @@ METADATA_LLM_MIN_DELAY_SECONDS = float(os.environ.get("METADATA_LLM_MIN_DELAY_SE
 for _dir in (DATA_DIR, PDF_DIR, SC_PDF_DIR, LOG_DIR, DEBUG_DIR, MARKDOWN_DIR, METADATA_DIR):
     os.makedirs(_dir, exist_ok=True)
 SCHEMA_VERSION = 2
-
-
-
