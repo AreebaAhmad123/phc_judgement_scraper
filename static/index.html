@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PHC Judgment Docket — Research Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16232f;
+    --ink-soft:#2b3b4c;
+    --parchment:#f2ecdd;
+    --parchment-dim:#e7dfc9;
+    --rule:#c9bd9c;
+    --brass:#9c7a3c;
+    --brass-bright:#b8923f;
+    --seal-red:#8a2f2c;
+    --text:#20242a;
+    --text-dim:#5b6472;
+    --ok:#3c6e4f;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--parchment);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .shell{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width:820px){
+    .shell{grid-template-columns:1fr;}
+    .docket-rail{order:2;}
+  }
+
+  /* ---------- Left rail: the "docket" ---------- */
+  .docket-rail{
+    background:linear-gradient(180deg, var(--ink) 0%, var(--ink-soft) 100%);
+    padding:28px 24px 24px;
+    border-right:1px solid rgba(242,236,221,0.12);
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand .mark{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--brass-bright);
+    letter-spacing:0.14em;
+    border:1px solid var(--brass);
+    padding:3px 6px;
+    border-radius:2px;
+  }
+  .brand h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:600;
+    font-size:20px;
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  .brand p{
+    margin:2px 0 0;
+    font-size:12.5px;
+    color:rgba(242,236,221,0.55);
+  }
+
+  .rail-section{
+    border-top:1px solid rgba(242,236,221,0.14);
+    padding-top:16px;
+  }
+  .rail-section h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--brass-bright);
+    margin:0 0 10px;
+  }
+  label.field{
+    display:block;
+    font-size:12px;
+    color:rgba(242,236,221,0.7);
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=password]{
+    width:100%;
+    background:rgba(242,236,221,0.06);
+    border:1px solid rgba(242,236,221,0.2);
+    color:var(--parchment);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:8px 9px;
+    border-radius:3px;
+    margin-bottom:12px;
+  }
+  input[type=text]:focus, input[type=password]:focus{
+    outline:none;
+    border-color:var(--brass-bright);
+  }
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:rgba(242,236,221,0.8);
+    margin-bottom:10px;
+  }
+  .switch{
+    position:relative; width:34px; height:18px; flex:none;
+  }
+  .switch input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer;}
+  .switch .track{
+    position:absolute; inset:0; background:rgba(242,236,221,0.2); border-radius:20px; transition:background .15s;
+  }
+  .switch .knob{
+    position:absolute; top:2px; left:2px; width:14px; height:14px; background:var(--parchment); border-radius:50%; transition:transform .15s;
+  }
+  .switch input:checked + .track{background:var(--ok);}
+  .switch input:checked ~ .knob{transform:translateX(16px);}
+
+  .legend{
+    font-size:12px;
+    color:rgba(242,236,221,0.6);
+    line-height:1.7;
+  }
+  .legend b{color:rgba(242,236,221,0.85); font-weight:500;}
+  .legend .qtype{
+    display:flex; justify-content:space-between; gap:8px;
+  }
+
+  .status-line{
+    margin-top:auto;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:rgba(242,236,221,0.45);
+    padding-top:12px;
+    border-top:1px solid rgba(242,236,221,0.14);
+  }
+  .status-dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:var(--text-dim);
+  }
+  .status-dot.ready{background:var(--ok);}
+  .status-dot.busy{background:var(--brass-bright);}
+  .status-dot.error{background:var(--seal-red);}
+
+  /* ---------- Right: the transcript ---------- */
+  .transcript-pane{
+    background:var(--parchment);
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  .transcript-header{
+    padding:22px 32px 16px;
+    border-bottom:1px solid var(--rule);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .transcript-header h2{
+    font-family:'Source Serif 4',serif;
+    font-size:19px;
+    font-weight:600;
+    margin:0;
+  }
+  .transcript-header .sub{
+    font-size:12.5px;
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .transcript{
+    flex:1;
+    overflow-y:auto;
+    padding:22px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  .entry{
+    position:relative;
+    max-width:720px;
+  }
+  .entry.user{align-self:flex-end;}
+  .entry.assistant{align-self:flex-start; width:100%;}
+
+  .entry-index{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-dim);
+    margin-bottom:4px;
+    letter-spacing:0.06em;
+  }
+  .entry.user .entry-index{text-align:right;}
+
+  .bubble{
+    padding:12px 16px;
+    border-radius:3px;
+    font-size:14.5px;
+    line-height:1.55;
+    white-space:pre-wrap;
+  }
+  .entry.user .bubble{
+    background:var(--ink);
+    color:var(--parchment);
+    border-radius:10px 10px 2px 10px;
+  }
+  .entry.assistant .bubble{
+    background:#fff;
+    border:1px solid var(--rule);
+    border-left:3px solid var(--brass);
+    border-radius:2px 10px 10px 10px;
+  }
+  .entry.assistant.no-tool .bubble{
+    border-left:3px solid var(--rule);
+  }
+
+  .seal{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:3px 8px;
+    border-radius:2px;
+    margin-bottom:8px;
+  }
+  .seal.tool{
+    background:rgba(156,122,60,0.14);
+    color:var(--brass);
+    border:1px solid rgba(156,122,60,0.4);
+  }
+  .seal.no-tool{
+    background:rgba(91,100,114,0.1);
+    color:var(--text-dim);
+    border:1px solid var(--rule);
+  }
+  .seal.irrelevant{
+    background:rgba(138,47,44,0.1);
+    color:var(--seal-red);
+    border:1px solid rgba(138,47,44,0.35);
+  }
+
+  .exhibits{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .exhibit{
+    border:1px solid var(--rule);
+    border-radius:2px;
+    background:var(--parchment-dim);
+    overflow:hidden;
+  }
+  .exhibit summary{
+    cursor:pointer;
+    padding:8px 12px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    list-style:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .exhibit summary::-webkit-details-marker{display:none;}
+  .exhibit summary .arrow{transition:transform .15s;}
+  .exhibit[open] summary .arrow{transform:rotate(90deg);}
+  .exhibit-body{padding:2px 12px 10px;}
+  .result-card{
+    padding:8px 0;
+    border-top:1px solid var(--rule);
+    font-size:12.5px;
+  }
+  .result-card:first-child{border-top:none;}
+  .result-card .rc-title{font-weight:600; font-family:'Source Serif 4',serif; font-size:13.5px;}
+  .result-card .rc-meta{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); margin-top:2px;
+  }
+  .result-card .rc-snippet{margin-top:4px; color:var(--text); line-height:1.4;}
+
+  .empty-state{
+    margin:auto;
+    text-align:center;
+    max-width:460px;
+    color:var(--text-dim);
+  }
+  .empty-state h3{
+    font-family:'Source Serif 4',serif; font-size:18px; color:var(--text); margin-bottom:6px;
+  }
+  .empty-state .examples{
+    margin-top:16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .empty-state button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    text-align:left;
+    background:#fff;
+    border:1px solid var(--rule);
+    padding:8px 10px;
+    border-radius:3px;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .empty-state button:hover{border-color:var(--brass);}
+
+  .composer{
+    border-top:1px solid var(--rule);
+    padding:16px 32px 20px;
+    display:flex;
+    gap:10px;
+    align-items:flex-end;
+  }
+  .composer textarea{
+    flex:1;
+    resize:none;
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    padding:11px 14px;
+    border:1px solid var(--rule);
+    border-radius:6px;
+    background:#fff;
+    color:var(--text);
+    min-height:44px;
+    max-height:140px;
+  }
+  .composer textarea:focus{outline:none; border-color:var(--brass);}
+  .composer button.send{
+    background:var(--ink);
+    color:var(--parchment);
+    border:none;
+    padding:12px 20px;
+    border-radius:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:0.05em;
+    cursor:pointer;
+    text-transform:uppercase;
+  }
+  .composer button.send:disabled{opacity:0.45; cursor:default;}
+  .composer button.send:not(:disabled):hover{background:var(--ink-soft);}
+
+  .thinking{
+    display:flex; gap:4px; align-items:center; padding:4px 0;
+  }
+  .thinking span{
+    width:5px; height:5px; border-radius:50%; background:var(--brass); animation:pulse 1s infinite ease-in-out;
+  }
+  .thinking span:nth-child(2){animation-delay:.15s;}
+  .thinking span:nth-child(3){animation-delay:.3s;}
+  @keyframes pulse{0%,80%,100%{opacity:0.25;} 40%{opacity:1;}}
+
+  .error-banner{
+    margin:0 32px; padding:10px 14px; background:rgba(138,47,44,0.08);
+    border:1px solid rgba(138,47,44,0.3); color:var(--seal-red);
+    font-size:12.5px; border-radius:4px; font-family:'IBM Plex Mono',monospace;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ LEFT: docket / config rail ============ -->
+  <aside class="docket-rail">
+    <div class="brand">
+      <span class="mark">PHC</span>
+      <div>
+        <h1>Judgment Docket</h1>
+        <p>Stage 4 — search &amp; tool-calling chat</p>
+      </div>
+    </div>
+
+    <div class="rail-section">
+      <h2>Connection</h2>
+      <label class="field" for="apiBase">API base URL</label>
+      <input type="text" id="apiBase" value="http://localhost:8000" spellcheck="false">
+      <label class="field" for="apiKey">X-API-Key</label>
+      <input type="password" id="apiKey" placeholder="server API key" spellcheck="false">
+      <div class="toggle-row">
+        <span>Skip relevance classifier</span>
+        <label class="switch">
+          <input type="checkbox" id="skipClassify">
+          <span class="track"></span><span class="knob"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="rail-section">
+      <h2>Query types handled</h2>
+      <div class="legend">
+        <div class="qtype"><span>Exact citation</span><b>lookup</b></div>
+        <div class="qtype"><span>Case file no.</span><b>lookup</b></div>
+        <div class="qtype"><span>Judge reference</span><b>structured</b></div>
+        <div class="qtype"><span>Case title / party</span><b>structured</b></div>
+        <div class="qtype"><span>Legal problem</span><b>semantic</b></div>
+        <div class="qtype"><span>Statute / section</span><b>hybrid</b></div>
+        <div class="qtype"><span>Off-domain</span><b>rejected</b></div>
+      </div>
+    </div>
+
+    <div class="rail-section">
+      <h2>How to read a turn</h2>
+      <div class="legend">
+        The LLM decides each turn whether <b>search_judgments</b> needs
+        to run. A brass tab marks a turn that called the tool; a grey
+        tab means the model answered from context alone (small talk,
+        a follow-up, or an off-domain question).
+      </div>
+    </div>
+
+    <div class="status-line" id="statusLine">
+      <span class="status-dot" id="statusDot"></span><span id="statusText">idle</span>
+    </div>
+  </aside>
+
+  <!-- ============ RIGHT: transcript ============ -->
+  <main class="transcript-pane">
+    <div class="transcript-header">
+      <h2>Peshawar High Court — reported judgments</h2>
+      <span class="sub">POST /chat/tool</span>
+    </div>
+
+    <div class="transcript" id="transcript">
+      <div class="empty-state" id="emptyState">
+        <h3>Ask about a case, a judge, or a legal question</h3>
+        <p>Every message goes through the same entry point — citations,
+        case titles, natural-language problems, and off-topic questions
+        are all detected automatically.</p>
+        <div class="examples">
+          <button data-q="2026 PHC 153">2026 PHC 153</button>
+          <button data-q="recent cases by Mr. Justice Sajid Mehmood">recent cases by Mr. Justice Sajid Mehmood</button>
+          <button data-q="cases where fundamental rights were violated during police custody">cases where fundamental rights were violated during police custody</button>
+          <button data-q="what's the weather today?">what's the weather today?</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="errorBanner" style="display:none;" class="error-banner"></div>
+
+    <form class="composer" id="composer">
+      <textarea id="userInput" rows="1" placeholder="Ask about a judgment, judge, citation, or legal issue…"></textarea>
+      <button class="send" type="submit" id="sendBtn">Send</button>
+    </form>
+  </main>
+
+</div>
+
+<script>
+const transcriptEl = document.getElementById('transcript');
+const emptyState = document.getElementById('emptyState');
+const composer = document.getElementById('composer');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const errorBanner = document.getElementById('errorBanner');
+
+let history = []; // {role, content}
+let entryCount = 0;
+
+function setStatus(state, text){
+  statusDot.className = 'status-dot ' + state;
+  statusText.textContent = text;
+}
+setStatus('', 'idle — no turns yet');
+
+function showError(msg){
+  errorBanner.style.display = 'block';
+  errorBanner.textContent = msg;
+}
+function clearError(){
+  errorBanner.style.display = 'none';
+}
+
+function autoGrow(){
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 140) + 'px';
+}
+userInput.addEventListener('input', autoGrow);
+
+document.querySelectorAll('.empty-state button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    userInput.value = btn.dataset.q;
+    autoGrow();
+    composer.dispatchEvent(new Event('submit', {cancelable:true}));
+  });
+});
+
+function addUserEntry(text){
+  emptyState.remove();
+  entryCount += 1;
+  const el = document.createElement('div');
+  el.className = 'entry user';
+  el.innerHTML = `<div class="entry-index">§${entryCount}</div><div class="bubble"></div>`;
+  el.querySelector('.bubble').textContent = text;
+  transcriptEl.appendChild(el);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  return el;
+}
+
+function addThinkingEntry(){
+  const el = document.createElement('div');
+  el.className = 'entry assistant';
+  el.innerHTML = `<div class="entry-index">§${entryCount}</div>
+    <div class="bubble"><div class="thinking"><span></span><span></span><span></span></div></div>`;
+  transcriptEl.appendChild(el);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  return el;
+}
+
+function escapeHtml(s){
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderExhibits(toolCalls){
+  if (!toolCalls || !toolCalls.length) return '';
+  return `<div class="exhibits">` + toolCalls.map((tc, i) => {
+    const results = (tc.results || []).map(r => `
+      <div class="result-card">
+        <div class="rc-title">${escapeHtml(r.case_title || '(untitled)')}</div>
+        <div class="rc-meta">${escapeHtml(r.citation || r.case_number || '')} · ${escapeHtml(r.judge || '')} · ${escapeHtml(r.decision_date || '')} · score ${r.score != null ? Number(r.score).toFixed(3) : '—'}</div>
+        <div class="rc-snippet">${escapeHtml(r.snippet || '')}</div>
+      </div>`).join('') || `<div class="result-card">No results returned.</div>`;
+    return `<details class="exhibit">
+      <summary><span>Exhibit ${i+1} — search_judgments(strategy="${escapeHtml(tc.strategy)}", query="${escapeHtml(tc.query)}") → ${tc.result_count} result(s)</span><span class="arrow">›</span></summary>
+      <div class="exhibit-body">${results}</div>
+    </details>`;
+  }).join('') + `</div>`;
+}
+
+function addAssistantEntry({answer, tool_called, tool_calls, query_label}){
+  const el = document.createElement('div');
+  const noToolClass = tool_called ? '' : ' no-tool';
+  el.className = 'entry assistant' + noToolClass;
+
+  let sealClass = 'no-tool', sealText = 'no tool call';
+  if (query_label === 'irrelevant') { sealClass = 'irrelevant'; sealText = 'rejected — off-domain'; }
+  else if (tool_called) { sealClass = 'tool'; sealText = 'search_judgments called'; }
+
+  el.innerHTML = `<div class="entry-index">§${entryCount}</div>
+    <div class="bubble">
+      <span class="seal ${sealClass}">${sealText}</span>
+      <div class="answer-text"></div>
+      ${renderExhibits(tool_calls)}
+    </div>`;
+  el.querySelector('.answer-text').textContent = answer;
+  return el;
+}
+
+composer.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = userInput.value.trim();
+  if (!text) return;
+  clearError();
+
+  const base = document.getElementById('apiBase').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('apiKey').value.trim();
+  const skip = document.getElementById('skipClassify').checked;
+
+  addUserEntry(text);
+  history.push({role: 'user', content: text});
+  userInput.value = '';
+  autoGrow();
+  sendBtn.disabled = true;
+  setStatus('busy', 'searching / generating…');
+
+  const thinkingEl = addThinkingEntry();
+
+  try {
+    const resp = await fetch(base + '/chat/tool', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': key,
+      },
+      body: JSON.stringify({messages: history, skip_classification: skip}),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.detail || ('HTTP ' + resp.status));
+    }
+    history.push({role: 'assistant', content: data.answer});
+    thinkingEl.replaceWith(addAssistantEntry(data));
+    setStatus('ready', 'ready — label: ' + data.query_label);
+  } catch (err) {
+    thinkingEl.remove();
+    showError('Request failed: ' + err.message);
+    setStatus('error', 'last request failed - edit and resend below');
+    userInput.value = text; // put the message back so it is easy to resend
+    history.pop(); // do not leave an unanswered user turn stuck in history
+  } finally {
+    sendBtn.disabled = false;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+});
+
+userInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    composer.dispatchEvent(new Event('submit', {cancelable:true}));
+  }
+});
+</script>
+</body>
+</html>

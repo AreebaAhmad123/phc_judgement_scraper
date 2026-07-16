@@ -1,0 +1,69 @@
+#Creates an asynchronous context manager to handle setup and cleanup using async/await.
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from phc_scraper import config
+from phc_scraper.logging_setup import configure_logging
+from phc_scraper.weaviate_client import ensure_schema, close_client
+
+from . import routes_chat, routes_chat_tool, routes_ingest
+from .limiter import limiter
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    configure_logging()
+    ensure_schema()  # creates the Weaviate collection on first run, no-op after
+    yield
+    close_client()
+
+
+app = FastAPI(
+    title="PHC Judgments API",
+    description="Serves the Peshawar High Court reported-judgments archive: "
+               "triggers ingestion into Weaviate and answers grounded "
+               "questions over it (RAG) with citations.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Cross-origin access is opt-in: empty CORS_ALLOWED_ORIGINS (the default)
+# means no browser-based client on a different origin can call this API
+# at all. Set CORS_ALLOWED_ORIGINS in .env to the specific origin(s) of
+# a real frontend when one exists - never "*" for a service that sits
+# behind an API key, since a wildcard origin plus credentialed requests
+# is a common misconfiguration.
+if config.CORS_ALLOWED_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["X-API-Key", "Content-Type"],
+    )
+
+app.include_router(routes_chat.router)
+app.include_router(routes_chat_tool.router)
+app.include_router(routes_ingest.router)
+
+# Minimal browser chat UI (Task Brief Stage 4, Section 5 / submission
+# "a minimal CLI or web UI"). Served as a static file rather than a
+# templated route since it's a single self-contained page that only
+# talks to /chat/tool over fetch() - no server-side rendering needed.
+_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+if os.path.isdir(_STATIC_DIR):
+    app.mount("/ui", StaticFiles(directory=_STATIC_DIR, html=True), name="ui")
+
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok"}
