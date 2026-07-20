@@ -1,0 +1,246 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "External Judgment Metadata",
+  "description": "One record per judgment, brief Section 4 field set. Field order in metadata_builder.METADATA_KEYS is the canonical source of truth for the JSON key order written to disk; this schema is the canonical source of truth for types and nullability.",
+  "type": "object",
+  "required": [
+    "Case Number",
+    "Case Title",
+    "Court Name",
+    "content",
+    "courtType",
+    "fileName",
+    "reference_url",
+    "source_file",
+    "source_url"
+  ],
+  "properties": {
+    "source_file": {
+      "type": "string"
+    },
+    "fileName": {
+      "type": "string"
+    },
+    "Page count": {
+      "type": [
+        "null"
+      ]
+    },
+    "Court Name": {
+      "type": "string"
+    },
+    "courtType": {
+      "type": "string"
+    },
+    "Case Title": {
+      "type": "string"
+    },
+    "Case Number": {
+      "type": "string"
+    },
+    "Type of Petition or Application": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "case_category": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "disposition_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bench_strength": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "citation_year": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "citation_journal": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "citation_page_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "case_filing_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "trial_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "appellate_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "high_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "supreme_court_decision_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "Hearing Date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "Decision/Order Date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO 8601 YYYY-MM-DD, or null if unknown/unparseable."
+    },
+    "petitioner_appellant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "respondent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Applicant and Respondents": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Advocate Names for each party": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Judge Name(s)": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "FIR Number and Date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Legal Sections Involved": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "articles_sections_cited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "statutes_mentioned": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "key_legal_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "head_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Cited Case Laws": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "precedents_cited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Short Summary of the Case": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "legal_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "final_decision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reference_url": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

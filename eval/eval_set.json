@@ -166,6 +166,33 @@
       "query_type": "exact_citation"
     },
     {
+      "id": "rel-16",
+      "category": "relevant",
+      "question": "What was the outcome of Writ Petition No.1518-P/2026?",
+      "reference_answer": "",
+      "expected_record_ids": ["PHC_2026_145"],
+      "notes": "Exact-token: real case-file-number query against ingested corpus (Mushtaq Ahmad & others vs. Federation of Pakistan & others).",
+      "query_type": "exact_citation"
+    },
+    {
+      "id": "rel-18",
+      "category": "relevant",
+      "question": "What was the case of Dr. Asad Ali Khan versus the Government of Khyber Pakhtunkhwa about?",
+      "reference_answer": "",
+      "expected_record_ids": ["PHC_2026_130"],
+      "notes": "Party-name query: W.P No. 2260-P of 2026, Dr. Asad Ali Khan Vs Government of Khyber Pakhtunkhwa through Chief Secretary.",
+      "query_type": "case_title_party"
+    },
+    {
+      "id": "rel-19",
+      "category": "relevant",
+      "question": "What did the court say about the threshold for invoking Article 199 of the Constitution in fiscal/tax matters?",
+      "reference_answer": "The court held that the jurisdictional threshold for interference under Article 199 in fiscal matters remains exceptionally high - constitutional jurisdiction isn't meant to bypass a complete statutory framework for levy, assessment, adjudication, and recovery of taxes; intervention is warranted only where there's a patent lack of jurisdiction, absence of legislative competence, or a demonstrable violation of fundamental rights.",
+      "expected_record_ids": ["PHC_2026_130"],
+      "notes": "Statute/article reference: Article 199 discussed directly in context of a professional-tax dispute.",
+      "query_type": "statute_section_reference"
+    },
+    {
       "id": "irr-01",
       "category": "irrelevant",
       "question": "What is the best way to cook traditional Pakistani biryani?",
@@ -236,61 +263,6 @@
       "reference_answer": null,
       "expected_record_ids": [],
       "notes": "Off-domain, no plausible connection to PHC case law."
-    },
-    {
-      "id": "rel-16",
-      "category": "relevant",
-      "query_type": "case_file_number",
-      "question": "PLACEHOLDER - replace with a real case-file-number query, e.g. 'W.P. 1234/2025', matched against a record actually in your ingested Weaviate corpus (not this sample's single PHC_2010_1).",
-      "reference_answer": "PLACEHOLDER - fill in from the real judgment.",
-      "expected_record_ids": [
-        "PLACEHOLDER_RECORD_ID"
-      ],
-      "notes": "TEMPLATE - see eval/README.md. Brief Section 2: case file number lookup ('W.P. 1234/2025') should return the exact matching judgment."
-    },
-    {
-      "id": "rel-17",
-      "category": "relevant",
-      "query_type": "judge_reference",
-      "question": "PLACEHOLDER - replace with 'recent cases by Mr. Justice <a real judge name from your corpus>' once the Task 3 metadata join (judgment_lookup.py) has real judge names to match against.",
-      "reference_answer": null,
-      "expected_record_ids": [
-        "PLACEHOLDER_RECORD_ID"
-      ],
-      "notes": "TEMPLATE. Judge-reference coverage depends on the metadata/*.json join - see judgment_lookup.py's docstring for the current coverage caveat before picking this example."
-    },
-    {
-      "id": "rel-18",
-      "category": "relevant",
-      "query_type": "case_title_party",
-      "question": "PLACEHOLDER - replace with a real 'X vs Province of KP'-style party-name query matched against your ingested corpus.",
-      "reference_answer": null,
-      "expected_record_ids": [
-        "PLACEHOLDER_RECORD_ID"
-      ],
-      "notes": "TEMPLATE - Brief Section 2 case-title/party-name query type."
-    },
-    {
-      "id": "rel-19",
-      "category": "relevant",
-      "query_type": "statute_section_reference",
-      "question": "PLACEHOLDER - replace with e.g. 'cases on Article 199 of the Constitution' matched against your ingested corpus.",
-      "reference_answer": null,
-      "expected_record_ids": [
-        "PLACEHOLDER_RECORD_ID"
-      ],
-      "notes": "TEMPLATE - Brief Section 2 statute/section-reference query type."
-    },
-    {
-      "id": "rel-20",
-      "category": "relevant",
-      "query_type": "natural_language_legal_problem",
-      "question": "PLACEHOLDER - a genuinely HARD paraphrase with no exact wording match in the corpus (Brief Section 6.1's 'include queries where the expected answer is genuinely hard') - this is where semantic search should beat keyword search. Replace with a real example.",
-      "reference_answer": null,
-      "expected_record_ids": [
-        "PLACEHOLDER_RECORD_ID"
-      ],
-      "notes": "TEMPLATE - deliberately hard paraphrase, see Brief Section 6.1."
     }
   ]
 }

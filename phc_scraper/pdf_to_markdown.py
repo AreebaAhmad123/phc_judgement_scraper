@@ -65,7 +65,14 @@ def _is_acceptable_markdown(text: str, page_count: int) -> bool:
         return False
     return _chars_per_page(text, page_count) >= config.MIN_CHARS_PER_PAGE
 
-def _page_text_with_ocr_fallback(page, page_num, pdf_path):
+def rag_markdown_path(record_id: str, kind: str = "judgment") -> str:
+    """Path to the RAG pipeline's (ingest.py) already-extracted markdown
+    for this judgment, if one exists - 'markdown/judgments/<id>.md' or
+    'markdown/sc_judgments/<id>.md'. Mirrors the md_subdir convention in
+    pdf_to_markdown_path() above. Does NOT check existence - callers
+    should os.path.exists() this before using it."""
+    md_subdir = "sc_judgments" if kind == "sc_judgment" else "judgments"
+    return os.path.join(config.MARKDOWN_DIR, md_subdir, f"{record_id}.md")
     """Returns (text, was_ocr). Tries the real text layer first; only
     pays the (much slower) OCR cost for a page that genuinely has none."""
     text = page.get_text("text").strip()
@@ -165,10 +172,21 @@ def pdf_to_markdown_path(record_id, pdf_relative_path, kind="judgment"):
                " (used OCR)" if used_ocr else "")
     return md_path
 
-def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str, stem_override: str | None = None) -> str | None:
+def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str, stem_override: str | None = None,
+                           rag_reuse_path: str | None = None) -> str | None:
     """Extract MD to markdown/<Court Name - leaf>.md. Returns absolute path.
     stem_override: same collision-safe stem used for this judgment's PDF
-    and JSON (see naming.safe_file_stem) so all three artifacts agree."""
+    and JSON (see naming.safe_file_stem) so all three artifacts agree.
+    rag_reuse_path: path to markdown the RAG pipeline (ingest.py) already
+    extracted for this same judgment (see rag_markdown_path() above,
+    matched by pdf_url via pipeline.py's url->record_id lookup - the two
+    pipelines use unrelated id schemes so this can't be derived here).
+    When given and the content passes this pipeline's own quality bar
+    (_is_acceptable_markdown), it's copied in as-is instead of re-running
+    pymupdf4llm/OCR - the same PDF was already OCR'd once by the RAG
+    pipeline; there's no reason to pay that cost twice. Falls through to
+    normal extraction if the path doesn't exist or the content doesn't
+    pass the bar."""
     if not pdf_relative_path:
         return None
     pdf_abs = os.path.join(config.PROJECT_ROOT, pdf_relative_path)
@@ -179,6 +197,21 @@ def pdf_to_markdown_brief(pdf_url: str, pdf_relative_path: str, stem_override: s
         return md_abs
 
     page_count = _page_count(pdf_abs)
+
+    if rag_reuse_path and os.path.exists(rag_reuse_path):
+        with open(rag_reuse_path, encoding="utf-8") as f:
+            reused_text = f.read()
+        if _is_acceptable_markdown(reused_text, page_count):
+            with open(md_abs, "w", encoding="utf-8") as f:
+                f.write(reused_text)
+            logger.info("Reused RAG-pipeline markdown for %s (skipped OCR): %s -> %s",
+                       pdf_url, rag_reuse_path, md_abs)
+            return md_abs
+        logger.info(
+            "RAG markdown at %s exists but doesn't pass this pipeline's "
+            "quality bar (< %d chars/page) for %s - falling back to fresh "
+            "extraction.", rag_reuse_path, config.MIN_CHARS_PER_PAGE, pdf_url)
+
     text = None
     used_ocr = False
 

@@ -117,7 +117,7 @@ WEAVIATE_GRPC_PORT = int(os.environ.get("WEAVIATE_GRPC_PORT", 50051))
 WEAVIATE_COLLECTION = "PHCJudgmentChunk"
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY")
-LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-2.5-flash")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-flash-latest")
 
 def _looks_like_gemini_key(value: str | None) -> bool:
     if not value:
@@ -163,10 +163,23 @@ MARKDOWN_DIR = os.path.join(PROJECT_ROOT, "markdown")
 INGESTION_STATE_PATH = os.path.join(DATA_DIR, "ingestion_state.json")
 
 # --- AWS S3 ---
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
+# Credentials for whatever S3-compatible object store you're using
+# (Backblaze B2, Cloudflare R2, or real AWS S3 - the client code doesn't
+# care). Named S3_* rather than AWS_* since these aren't AWS credentials
+# for most setups; kept generic on purpose.
+S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID")
+S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY")
+S3_REGION = os.environ.get("S3_REGION")
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+# Set this to point boto3 at any S3-compatible provider instead of AWS
+# (e.g. Cloudflare R2: https://<account_id>.r2.cloudflarestorage.com,
+# Backblaze B2: https://s3.<region>.backblazeb2.com). Leave unset to
+# keep talking to real AWS S3 - the client code branches on this value.
+S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
+# Some non-AWS S3 clones only support path-style bucket addressing
+# (bucket in the URL path, not as a subdomain). Set to "1"/"true" if
+# your provider's docs ask for that; AWS and R2 don't need it.
+S3_FORCE_PATH_STYLE = os.environ.get("S3_FORCE_PATH_STYLE", "").lower() in ("1", "true", "yes")
 # --- External Judgment API ---
 EXTERNAL_JUDGMENT_API_BASE_URL = os.environ.get(
     "EXTERNAL_JUDGMENT_API_BASE_URL", "https://chat.pakistanlawbot.com"

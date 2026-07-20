@@ -222,14 +222,33 @@ def run_config(config_name, eval_entries, retrieval_only=False):
     return summary
 
 
-def run_classifier_eval(eval_entries):
+def run_classifier_eval(eval_entries, limit=None):
     """Brief Section 8: classifier confusion matrix over the FULL eval
     set (every category, not just the 'relevant' ones the strategy
     configs above skip past). Every entry gets classified regardless of
     its category label, so 'meta' and 'relevant' entries both count as
     expected_relevant=True (both should pass the irrelevant-query gate;
     they differ in what happens AFTER the gate, which isn't this
-    metric's concern)."""
+    metric's concern).
+
+    limit: cap the number of entries actually classified, for LLM
+    providers with a small daily request quota (e.g. Gemini free tier's
+    20/day) where the full eval set guarantees a mid-run 429 no matter
+    when you run it. Stratifies rather than truncating: keeps every
+    'irrelevant' and 'meta' entry first (irrelevant_rejection_rate is
+    the metric this eval actually exists to measure - losing coverage
+    there defeats the point), then fills the remaining budget with
+    'relevant' entries. Prints which entries were skipped and why, so a
+    partial run's coverage gap is visible in the output, not silent."""
+    if limit is not None and limit < len(eval_entries):
+        priority = [e for e in eval_entries if e.get("category") != "relevant"]
+        filler = [e for e in eval_entries if e.get("category") == "relevant"]
+        selected = (priority + filler)[:limit]
+        skipped = [e["id"] for e in eval_entries if e not in selected]
+        print(f"--limit {limit}: classifying {len(selected)}/{len(eval_entries)} entries "
+             f"(all non-'relevant' entries prioritized). Skipped: {skipped}")
+        eval_entries = selected
+
     print(f"\n=== Running classifier eval ({len(eval_entries)} entries) ===")
     predictions = []
     for idx, entry in enumerate(eval_entries, start=1):
@@ -289,6 +308,14 @@ def main():
         help="Run the Section 8 classifier confusion-matrix eval instead "
             "of a strategy comparison. Ignores --config.",
     )
+    parser.add_argument(
+        "--limit", type=int, default=None,
+        help="Only used with --classifier-eval. Caps how many entries get "
+            "classified, for small daily LLM quotas (e.g. Gemini free "
+            "tier's 20/day) where the full eval set guarantees a mid-run "
+            "429. Prioritizes irrelevant/meta entries over relevant ones "
+            "- see run_classifier_eval()'s docstring.",
+    )
     args = parser.parse_args()
 
     with open(EVAL_SET_PATH, "r", encoding="utf-8") as f:
@@ -302,7 +329,7 @@ def main():
 
     try:
         if args.classifier_eval:
-            run_classifier_eval(eval_entries)
+            run_classifier_eval(eval_entries, limit=args.limit)
         elif args.config == "all":
             for name in CONFIGS:
                 run_config(name, eval_entries, retrieval_only=args.retrieval_only)

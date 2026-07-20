@@ -27,7 +27,7 @@ from phc_scraper import config
 from phc_scraper.query_classifier import classify_query
 from phc_scraper.retrieval import search_judgments
 
-from chat_cli import SYSTEM_PROMPT, TOOL_SCHEMA, _raise_friendly_llm_error
+from chat_cli import SYSTEM_PROMPT, TOOL_SCHEMA, _raise_friendly_llm_error, _tool_call_to_history_dict
 
 from .auth import require_api_key
 from .limiter import limiter
@@ -136,9 +136,7 @@ def chat_tool(request: Request, body: ToolChatRequest):
     while message.tool_calls:
         messages.append({
             "role": "assistant", "content": message.content or "",
-            "tool_calls": [{"id": tc.id, "type": "function",
-                            "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                           for tc in message.tool_calls],
+            "tool_calls": [_tool_call_to_history_dict(tc) for tc in message.tool_calls],
         })
         for tool_call in message.tool_calls:
             tool_result, record = _run_tool_call_recorded(tool_call)

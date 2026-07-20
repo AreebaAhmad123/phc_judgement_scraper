@@ -8,15 +8,17 @@ from .courts import get_court
 from .external_api import ExternalAPIAuthError, post_judgment, put_judgment
 from .http_client import ThrottledClient
 from .logging_setup import logger
+from .llm_metadata_extractor import LLMQuotaExhausted
 from .metadata_builder import build_metadata, patch_citation_fields
 from .naming import file_stem, local_json_path, s3_key, safe_file_stem
 from .pdf_downloader import download_pdf
-from .pdf_to_markdown import pdf_to_markdown_brief
+from .pdf_to_markdown import pdf_to_markdown_brief, rag_markdown_path
 from .processed_state import ProcessedState
 from . import s3_uploader
 from .scraper import RunLock, fetch_year_html, scrape_year  # reuse fetch/parse
 from .parser import parse_results_table
 from .stable_id import stable_judgment_id
+from .storage import JudgmentStore
 
 
 def _write_json(path: str, data: dict) -> None:
@@ -39,7 +41,7 @@ def _upload_triplet(pdf_url: str, pdf_rel: str, md_abs: str, json_path: str, ste
     s3_uploader.upload_file(json_path, s3_key("metadata", pdf_url, stem))
 
 
-def _process_new(row: dict, client, court, state: ProcessedState) -> bool:
+def _process_new(row: dict, client, court, state: ProcessedState, url_to_rag_id: dict) -> bool:
     pdf_url = row["judgment_pdf_url"]
     if not pdf_url:
         logger.warning("Row %s has no PDF URL; skipping.", row.get("id"))
@@ -59,7 +61,15 @@ def _process_new(row: dict, client, court, state: ProcessedState) -> bool:
     if not pdf_rel:
         return False
 
-    md_abs = pdf_to_markdown_brief(pdf_url, pdf_rel, stem_override=stem)
+    rag_id = url_to_rag_id.get(pdf_url)
+    rag_reuse_path = rag_markdown_path(rag_id, "judgment") if rag_id else None
+
+    md_abs = pdf_to_markdown_brief(
+        pdf_url,
+        pdf_rel,
+        stem_override=stem,
+        rag_reuse_path=rag_reuse_path,
+    )
     if not md_abs:
         return False
 
@@ -145,6 +155,20 @@ def run_pipeline(years=None) -> None:
     stats = {"new": 0, "citation_update": 0, "skip": 0, "failed": 0}
     failed_years: list[int] = []
     auth_error: ExternalAPIAuthError | None = None
+    quota_exhausted_error: LLMQuotaExhausted | None = None
+
+    url_to_rag_id: dict[str, str] = {}
+    try:
+        for rec in JudgmentStore().all_records():
+            url = rec.get("judgment_pdf_url")
+            if url and rec.get("id"):
+                url_to_rag_id[url] = rec["id"]
+        logger.info("Loaded %d RAG-pipeline record(s) for markdown reuse.", len(url_to_rag_id))
+    except Exception:
+        logger.exception(
+            "Could not load judgments.json for markdown reuse; continuing without it "
+            "(no reuse, normal extraction)."
+        )
 
     try:
         with RunLock():
@@ -161,7 +185,7 @@ def run_pipeline(years=None) -> None:
                         if action == "skip":
                             stats["skip"] += 1
                         elif action == "new":
-                            ok = _process_new(row, client, court, state)
+                            ok = _process_new(row, client, court, state, url_to_rag_id)
                             stats["new" if ok else "failed"] += 1
                         elif action == "citation_update":
                             sid = stable_judgment_id(
@@ -184,11 +208,31 @@ def run_pipeline(years=None) -> None:
                         )
                         auth_error = exc
                         break
+                    except LLMQuotaExhausted as exc:
+                        # Same reasoning as ExternalAPIAuthError above: a
+                        # persisted Groq rate limit means every remaining
+                        # row would also fail LLM extraction, and - unlike
+                        # ExternalAPIAuthError - the row would otherwise
+                        # still get marked "done" in processed_ids.json
+                        # with permanently-null LLM fields (see
+                        # LLMQuotaExhausted's docstring), which is worse
+                        # than just stopping. THIS row is not marked done
+                        # - only progress on earlier rows is saved.
+                        logger.error(
+                            "Halting run: %s quota exhausted (%s). Re-run later "
+                            "once the quota resets (daily quotas typically reset "
+                            "at midnight UTC/Pacific depending on provider) - "
+                            "this row and everything after it in this run was "
+                            "NOT marked done, so they'll be picked up again.",
+                            config.LLM_PROVIDER, exc,
+                        )
+                        quota_exhausted_error = exc
+                        break
                     except Exception:
                         logger.exception("Failed row %s", row.get("id"))
                         stats["failed"] += 1
                 state.save()
-                if auth_error is not None:
+                if auth_error is not None or quota_exhausted_error is not None:
                     break
     finally:
         client.close()
@@ -211,3 +255,6 @@ def run_pipeline(years=None) -> None:
         # process exits non-zero and the scheduler/CI surfaces this loudly
         # instead of it looking like an ordinary day with some failed rows.
         raise auth_error
+
+    if quota_exhausted_error is not None:
+        raise quota_exhausted_error

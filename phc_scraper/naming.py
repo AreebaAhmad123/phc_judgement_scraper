@@ -17,6 +17,14 @@ def pdf_leaf(pdf_url: str) -> str:
     return name
 
 
+SC_APPEAL_FILENAME_PREFIX = "Peshawar High Court SC Appeal - "
+
+
+def sc_source_file(pdf_url: str) -> str:
+    """Filename for a Supreme Court appeal judgment PDF."""
+    return f"{SC_APPEAL_FILENAME_PREFIX}{pdf_leaf(pdf_url)}.pdf"
+
+
 def file_stem(pdf_url: str, stem_override: str | None = None) -> str:
     """Shared stem: 'Peshawar High Court - 2026PHC153'.
 

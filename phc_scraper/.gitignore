@@ -1,0 +1,67 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime state (kept out of git; sample_output/ has example JSON instead)
+data/judgments.json
+data/ingestion_state.json
+data/gdrive_upload_state.json
+data/processed_ids.json
+data/.scrape.lock
+logs/*.log*
+debug_responses/
+
+# Large generated content, not meant for git history. The submission's
+# 5-real-file sample in each of pdfs/, markdown/, metadata/ is committed
+# with `git add -f` specifically to bypass this - see README.md
+# "Submission deliverables".
+pdfs/
+markdown/
+metadata/
+
+# Secrets - never commit any of these
+.env
+.env.local
+.env.*.local
+client_secret.json
+token.json
+service_account.json
+
+# IDE and Editor config
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Generated output files
+results/
+downloaded_pdfs/
+eval/results/
+
+# Python build artifacts
+*.egg-info/
+dist/
+build/
+
+# Cache and coverage
+.mypy_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Database and persistent local files
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# System files
+Thumbs.db
+*.log

@@ -94,7 +94,8 @@ def classify_query(question):
             model=config.QUERY_CLASSIFIER_MODEL,
             system_prompt=_SYSTEM_PROMPT,
             user_message=question,
-            max_tokens=150,
+            max_tokens=300,
+            thinking_budget=0,
         ).strip()
         parsed = json.loads(text)
         if parsed.get("label") not in ("relevant", "irrelevant", "meta"):

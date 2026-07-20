@@ -24,7 +24,66 @@ import time
 from openai import RateLimitError  # type: ignore[import]
 from . import config
 from . import llm_client
+from .llm_client import LLMRateLimitError
 from .logging_setup import logger
+
+
+class LLMQuotaExhausted(Exception):
+    """Raised when Groq's rate limit persists through every retry - a
+    genuine daily/per-minute cap, not a single flaky call. Distinct from
+    every other failure mode here (which fail-open to null fields and
+    keep going) because continuing to call the API judgment-after-
+    judgment while the org-wide quota is exhausted just wastes the
+    retry budget on calls guaranteed to fail, and - worse - each one
+    still gets marked 'processed' with permanently-null LLM fields
+    (these fields aren't retried on a later run once a judgment's sid
+    is in processed_ids.json). Callers (pipeline.py) catch this and
+    stop the run cleanly instead, so today's remaining quota isn't
+    spent stamping thousands of judgments as done-but-empty."""
+
+
+def _repair_truncated_json(raw: str) -> str | None:
+    """Best-effort repair for a JSON object that got cut off mid-value
+    (usually mid-string) - the actual cause of the "Unterminated
+    string"/"Expecting property name" errors seen in practice, NOT
+    max_tokens truncation (those failures happen at a few hundred to a
+    couple thousand characters in, well under the token budget) - it's
+    the model occasionally emitting a raw, unescaped " or newline
+    inside a string value (case titles and quoted judgment text are
+    full of both). Closes the last open string and any open braces/
+    brackets, then retries the parse; gives up (returns None) if that
+    still doesn't parse, so callers fall back to the null-fields
+    default rather than trusting a guess."""
+    text = raw.rstrip()
+    in_string = False
+    escaped = False
+    depth_stack = []
+    for ch in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch in "{[":
+                depth_stack.append(ch)
+            elif ch in "}]":
+                if depth_stack:
+                    depth_stack.pop()
+    repaired = text
+    if in_string:
+        repaired += '"'
+    for opener in reversed(depth_stack):
+        repaired += "}" if opener == "{" else "]"
+    try:
+        json.loads(repaired)
+    except json.JSONDecodeError:
+        return None
+    return repaired
 
 _last_call_ts = 0.0
 _MAX_RATE_LIMIT_RETRIES = 4
@@ -165,12 +224,16 @@ def _coerce(parsed: dict) -> dict:
 
 
 def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
-    """Returns a dict with exactly the keys in _ALL_FIELDS. Never raises -
-    an llm/network/parsing failure logs a warning and returns the same
-    all-null/all-empty shape metadata_builder.py already defaults to, so
-    a flaky LLM call degrades to "these fields stay null this run"
-    (retried automatically next run, since these fields aren't part of
-    content_hash/dedup keys) rather than failing the whole judgment.
+    """Returns a dict with exactly the keys in _ALL_FIELDS. Fail-open for
+    every failure mode EXCEPT persistent rate-limiting: an LLM/network/
+    parsing failure (including malformed JSON that doesn't repair
+    cleanly) logs a warning and returns the same all-null/all-empty
+    shape metadata_builder.py already defaults to, so a flaky LLM call
+    degrades to "these fields stay null this run" rather than failing
+    the whole judgment. Raises LLMQuotaExhausted if Groq's rate limit
+    persists through every retry - that's a signal to stop the run, not
+    to keep marking judgments done with empty metadata (see
+    LLMQuotaExhausted's docstring).
     """
     if not markdown_text or not markdown_text.strip():
         logger.warning("No markdown text to extract metadata from (case_info=%r)", case_info)
@@ -196,7 +259,22 @@ def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
                 max_tokens=1500,
                 temperature=0,
             )
-            parsed = json.loads(_strip_code_fences(raw_text))
+            cleaned = _strip_code_fences(raw_text)
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError as exc:
+                repaired = _repair_truncated_json(cleaned)
+                if repaired is None:
+                    logger.warning(
+                        "LLM metadata extraction failed for case_info=%r (%s); "
+                        "leaving these fields null/empty for this run.",
+                        case_info, exc,
+                    )
+                    return _empty_result()
+                logger.info(
+                    "LLM JSON for case_info=%r was malformed (%s) but repaired "
+                    "cleanly (closed an unterminated string/brace).", case_info, exc)
+                parsed = json.loads(repaired)
             if not isinstance(parsed, dict):
                 logger.warning(
                     "LLM returned non-object (%s); case_info=%r",
@@ -205,19 +283,25 @@ def extract_llm_metadata(markdown_text: str, case_info: str = "") -> dict:
                 return _empty_result()
             return _coerce(parsed)
 
-        except RateLimitError as exc:
+        except (RateLimitError, LLMRateLimitError) as exc:
             if attempt < _MAX_RATE_LIMIT_RETRIES:
                 wait = _RATE_LIMIT_BACKOFF_BASE * (2 ** (attempt - 1))
                 logger.warning(
-                    "Groq rate limit hit (attempt %d/%d); retrying in %.0fs.",
-                    attempt, _MAX_RATE_LIMIT_RETRIES, wait,
+                    "%s rate limit hit (attempt %d/%d); retrying in %.0fs.",
+                    config.LLM_PROVIDER, attempt, _MAX_RATE_LIMIT_RETRIES, wait,
                 )
                 time.sleep(wait)
                 continue
-            logger.warning("Groq rate limit persisted (case_info=%r); giving up.", case_info)
-            return _empty_result()
+            logger.error(
+                "%s rate limit persisted through %d attempts (case_info=%r) - "
+                "this looks like the daily/project-wide cap, not a one-off "
+                "throttle. Stopping rather than continuing to mark judgments "
+                "done with empty metadata.",
+                config.LLM_PROVIDER, _MAX_RATE_LIMIT_RETRIES, case_info,
+            )
+            raise LLMQuotaExhausted(str(exc)) from exc
 
-        except Exception as exc:  # noqa: BLE001 - API error, timeout, malformed JSON, etc.
+        except Exception as exc:  # noqa: BLE001 - API error, timeout, etc.
             logger.warning(
                 "LLM metadata extraction failed for case_info=%r (%s); "
                 "leaving these fields null/empty for this run.",

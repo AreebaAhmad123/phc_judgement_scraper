@@ -107,23 +107,6 @@ def _raise_friendly_llm_error(exc):
         ) from exc
     raise exc
 
-def _tool_call_to_history_dict(tc):
-    """Serialize an assistant tool_call for re-sending in message history.
-
-    Preserves provider-specific extra fields (notably Gemini 3.x's
-    `extra_content.google.thought_signature`) that live outside the
-    plain OpenAI tool_call schema. Dropping these makes the *next*
-    request fail with a 400 ("Function call is missing a
-    thought_signature...") since Gemini's thinking models require the
-    signature to be echoed back on every subsequent turn.
-    """
-    d = {"id": tc.id, "type": "function",
-         "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-    extra = getattr(tc, "model_extra", None) or {}
-    extra_content = extra.get("extra_content") or getattr(tc, "extra_content", None)
-    if extra_content:
-        d["extra_content"] = extra_content
-    return d
 
 def _run_tool_call(tool_call) -> str:
     args = json.loads(tool_call.function.arguments or "{}")
@@ -175,7 +158,9 @@ def chat_turn_openai_compat(client, messages, skip_classification=False):
         tool_called = True
         messages.append({
             "role": "assistant", "content": message.content or "",
-            "tool_calls": [_tool_call_to_history_dict(tc) for tc in message.tool_calls],
+            "tool_calls": [{"id": tc.id, "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                           for tc in message.tool_calls],
         })
         for tool_call in message.tool_calls:
             tool_result = _run_tool_call(tool_call)

@@ -48,7 +48,7 @@ from urllib.parse import unquote, urlparse
 from . import config
 from .logging_setup import logger
 
-from .naming import local_pdf_path, source_file
+from .naming import local_pdf_path, sc_source_file
 from .courts import get_court
 
 _UNSAFE_CHARS = re.compile(r'[\\/:*?"<>|]')
@@ -83,12 +83,28 @@ def _looks_like_pdf(path):
         return False
 
 
-def _brief_dest_path(remote_url: str, stem_override: str | None = None) -> tuple[str, str]:
+def _brief_dest_path(remote_url: str, stem_override: str | None = None,
+                      kind: str = "judgment") -> tuple[str, str]:
     """Returns (relative_path, absolute_path) using brief naming.
     stem_override: pass the same disambiguated stem used for this
     judgment's markdown/json/S3 paths (see naming.safe_file_stem) so all
-    artifacts for one judgment land under the same collision-safe name."""
-    rel = os.path.relpath(local_pdf_path(remote_url, stem_override), config.PROJECT_ROOT)
+    artifacts for one judgment land under the same collision-safe name.
+    Only ever used for kind='judgment' - the SC branch doesn't take a
+    stem_override today (see scraper.py's download_pdf calls).
+
+    kind='judgment' saves under config.PDF_DIR using the court's own
+    filename_prefix, via naming.local_pdf_path(). Any other kind
+    (currently only 'sc_judgment') saves under config.SC_PDF_DIR using
+    naming.sc_source_file()'s own fixed prefix - previously this
+    branched on an unused dest_dir variable and fell through to the same
+    path AND the same filename_prefix as main judgments, so SC PDFs both
+    landed in the wrong folder and were misleadingly named as if they
+    were Peshawar High Court judgments. See CHANGES.md / DECISIONS.md."""
+    if kind == "judgment":
+        abs_path = local_pdf_path(remote_url, stem_override)
+    else:
+        abs_path = os.path.join(config.SC_PDF_DIR, sc_source_file(remote_url))
+    rel = os.path.relpath(abs_path, config.PROJECT_ROOT)
     return rel, os.path.join(config.PROJECT_ROOT, rel)
 
 def download_pdf(client, remote_url, record_id, store, kind="judgment", stem_override=None):
@@ -107,11 +123,7 @@ def download_pdf(client, remote_url, record_id, store, kind="judgment", stem_ove
     if not remote_url:
         return None, None
     
-    if kind == "judgment":
-        rel_path, local_path = _brief_dest_path(remote_url, stem_override)
-    else:
-        dest_dir = config.SC_PDF_DIR
-        rel_path, local_path = _brief_dest_path(remote_url, stem_override)
+    rel_path, local_path = _brief_dest_path(remote_url, stem_override, kind=kind)
 
     # if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
     if os.path.exists(local_path) and os.path.getsize(local_path) >= config.MIN_PDF_BYTES:
